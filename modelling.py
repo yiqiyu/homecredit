@@ -31,7 +31,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=2):
         # Validation data for the fold
         vX, vy = X.loc[valid_indices, :], y[valid_indices]
 
-        lgbm = LGBMClassifier(n_estimators=2000, objective='binary',
+        lgbm = LGBMClassifier(boosting_type="goss", n_estimators=2000, objective='binary',
                               learning_rate=0.05, n_jobs=parallel, random_state=50,
                               subsample=0.8, reg_alpha=0.1, reg_lambda=0.1, class_weight="balanced"
                               )
