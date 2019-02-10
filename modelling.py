@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def model(train, test, cat_indices="auto", n_folds=5, parallel=2):
+def model(train, test, cat_indices="auto", n_folds=5, parallel=4):
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
     test = test.drop(['SK_ID_CURR'], axis=1)
@@ -31,14 +31,15 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=2):
         # Validation data for the fold
         vX, vy = X.loc[valid_indices, :], y[valid_indices]
 
-        lgbm = LGBMClassifier(boosting_type="goss", n_estimators=2000, objective='binary',
-                              learning_rate=0.05, n_jobs=parallel, random_state=50,
-                              subsample=0.8, reg_alpha=0.1, reg_lambda=0.1, class_weight="balanced"
+        lgbm = LGBMClassifier(boosting_type="goss", n_estimators=10000, objective='binary',
+                              learning_rate=0.02, n_jobs=parallel, random_state=50,
+                              subsample=0.8, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
+                              max_depth=8, colsample_bytree=0.9,
                               )
 
         lgbm.fit(tnX, tny, eval_metric="auc", categorical_feature=cat_indices, feature_name='auto',
                  eval_set=[(vX, vy), (tnX, tny)], eval_names=['valid', 'train'],
-                 early_stopping_rounds=100, verbose=200)
+                 early_stopping_rounds=200, verbose=200)
         test_predictions += lgbm.predict_proba(test, num_iteration=best_iteration)[:, 1] / k_fold.n_splits
 
         best_iteration = lgbm.best_iteration_
@@ -78,7 +79,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=2):
     return submission, feature_importances, metrics
 
 
-def plot_feature_importances(df):
+def plot_feature_importances(df, top=15):
     """
     Plot importances returned by a model. This can work with any measure of
     feature importance provided that higher importance is better.
@@ -101,17 +102,17 @@ def plot_feature_importances(df):
     df['importance_normalized'] = df['importance'] / df['importance'].sum()
 
     # Make a horizontal bar chart of feature importances
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 5*int(top/15)))
     ax = plt.subplot()
 
     # Need to reverse the index to plot most important on top
-    ax.barh(list(reversed(list(df.index[:15]))),
-            df['importance_normalized'].head(15),
+    ax.barh(list(reversed(list(df.index[:top]))),
+            df['importance_normalized'].head(top),
             align='center', edgecolor='k')
 
     # Set the yticks and labels
-    ax.set_yticks(list(reversed(list(df.index[:15]))))
-    ax.set_yticklabels(df['feature'].head(15))
+    ax.set_yticks(list(reversed(list(df.index[:top]))))
+    ax.set_yticklabels(df['feature'].head(top))
 
     # Plot labeling
     plt.xlabel('Normalized Importance')
