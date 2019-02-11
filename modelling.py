@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def model(train, test, cat_indices="auto", n_folds=5, parallel=4):
+def model(train, test, cat_indices="auto", n_folds=5, parallel=3):
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
     test = test.drop(['SK_ID_CURR'], axis=1)
@@ -24,7 +24,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=4):
 
     valid_scores = []
     train_scores = []
-    best_iteration = 2000
+    best_iteration = 2200
     for train_indices, valid_indices in k_fold.split(X):
         # Training data for the fold
         tnX, tny = X.loc[train_indices, :], y[train_indices]
