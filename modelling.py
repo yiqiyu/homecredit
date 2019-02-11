@@ -33,13 +33,13 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3):
 
         lgbm = LGBMClassifier(boosting_type="goss", n_estimators=10000, objective='binary',
                               learning_rate=0.02, n_jobs=parallel, random_state=50,
-                              subsample=0.8, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
-                              max_depth=8, colsample_bytree=0.9,
+                              subsample=0.81, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
+                              max_depth=8, colsample_bytree=0.92, num_leaves=35
                               )
 
         lgbm.fit(tnX, tny, eval_metric="auc", categorical_feature=cat_indices, feature_name='auto',
                  eval_set=[(vX, vy), (tnX, tny)], eval_names=['valid', 'train'],
-                 early_stopping_rounds=200, verbose=200)
+                 early_stopping_rounds=300, verbose=200)
         test_predictions += lgbm.predict_proba(test, num_iteration=best_iteration)[:, 1] / k_fold.n_splits
 
         best_iteration = lgbm.best_iteration_
