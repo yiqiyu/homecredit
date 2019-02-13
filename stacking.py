@@ -3,6 +3,7 @@ from sklearn.model_selection import KFold
 import numpy as np
 import gc
 import copy
+import pandas as pd
 
 from feat_loading import load_dataframe, load_extra_feats_post
 
@@ -18,7 +19,7 @@ class StackingWrapper(object):
         return getattr(self.clf, item)
 
 
-def get_oof(clf_proto, train, test, n_folds=5):
+def get_oof(clf_proto, train, test, target_name, n_folds=5):
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
     test = test.drop(['SK_ID_CURR'], axis=1)
@@ -41,9 +42,11 @@ def get_oof(clf_proto, train, test, n_folds=5):
         del tnX, tny, clf
         gc.collect()
 
+    train_res = pd.DataFrame({'SK_ID_CURR': train_ids, target_name: train_oof})
+    test_res = pd.DataFrame({'SK_ID_CURR': test_ids, target_name: test_predictions})
     del X, y, train_ids, test_ids
     gc.collect()
-    return train_oof, test_predictions
+    return train_res, test_res
 
 
 if __name__ == '__main__':
@@ -60,5 +63,7 @@ if __name__ == '__main__':
         n_jobs=4,
         random_state=50
     )
-    rf = StackingWrapper(RandomForestClassifier(**rf_settings))
-    rf_t_oof, t_feat = rf.get_oof(app_train, app_test)
+    rf = RandomForestClassifier(**rf_settings)
+    rf_train_oof, rf_test_feat = get_oof(rf, app_train, app_test, "RF")
+    rf_train_oof.to_csv("RF_oof.csv")
+    rf_test_feat.to_csv("RF_test.csv")
