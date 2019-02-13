@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def model(train, test, cat_indices="auto", n_folds=5, parallel=3):
+def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False):
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
     test = test.drop(['SK_ID_CURR'], axis=1)
@@ -76,7 +76,10 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3):
                             'train': train_scores,
                             'valid': valid_scores})
 
-    return submission, feature_importances, metrics
+    if need_oof:
+        return submission, feature_importances, metrics, out_of_fold
+    else:
+        return submission, feature_importances, metrics
 
 
 def plot_feature_importances(df, top=15):
