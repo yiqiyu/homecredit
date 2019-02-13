@@ -25,13 +25,13 @@ def get_oof(clf, train, test, n_folds=5):
 
     k_fold = KFold(n_splits=n_folds, shuffle=True, random_state=250)
     test_predictions = np.zeros(test.shape[0])
-    out_of_fold = np.zeros(X.shape[0])
+    train_oof = np.zeros(X.shape[0])
 
     for train_indices, predict_indices in k_fold.split(X):
         tnX, tny = X.loc[train_indices, :], y[train_indices]
         pX = X.loc[predict_indices, :]
         clf.fit(tnX, tny)
-        out_of_fold[predict_indices] = clf.predict_proba(pX)[:, 1]
+        train_oof[predict_indices] = clf.predict_proba(pX)[:, 1]
         test_predictions += clf.predict_proba(test)[:, 1] / k_fold.n_splits
 
-    return out_of_fold, test_predictions
+    return train_oof, test_predictions
