@@ -1,4 +1,8 @@
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.preprocessing import Imputer
+from sklearn.tree._tree import DTYPE
+
+from sklearn.utils.validation import check_array
 from sklearn.model_selection import KFold
 import numpy as np
 import gc
@@ -6,6 +10,7 @@ import copy
 import pandas as pd
 
 from feat_loading import load_dataframe, load_extra_feats_post
+
 
 class StackingWrapper(object):
     def __init__(self, inited_clf, **fit_settings):
@@ -53,17 +58,28 @@ if __name__ == '__main__':
     app_train = load_dataframe("train_all.csv")
     app_test = load_dataframe("test_all.csv")
     app_train, app_test = load_extra_feats_post(app_train, app_test)
+    app_train = Imputer().fit_transform(app_train)
+    app_test = Imputer().fit_transform(app_test)
+    # for dsname, ds in {"app_train": app_train, "app_test":app_test}.items():
+    #     for col in ds:
+    #         if ds[col].dtype == 'float32':
+    #             if ds[np.isnan(ds[col])].any():
+    #                 print("nan: ", dsname, col)
+    #             elif ds[np.isinf(ds[col])].any():
+    #                 print("inf: ", dsname, col)
+    #
+    # rf_settings = dict(
+    #     n_estimators=10000,
+    #     max_depth=10,
+    #     min_samples_leaf=20,
+    #     min_samples_split=10,
+    #     min_impurity_decrease=1e-6,
+    #     n_jobs=4,
+    #     random_state=50
+    # )
+    # rf = RandomForestClassifier(**rf_settings)
+    # rf_train_oof, rf_test_feat = get_oof(rf, app_train, app_test, "RF")
+    # rf_train_oof.to_csv("RF_oof.csv")
+    # rf_test_feat.to_csv("RF_test.csv")
 
-    rf_settings = dict(
-        n_estimators=10000,
-        max_depth=10,
-        min_samples_leaf=20,
-        min_samples_split=10,
-        min_impurity_decrease=1e-6,
-        n_jobs=4,
-        random_state=50
-    )
-    rf = RandomForestClassifier(**rf_settings)
-    rf_train_oof, rf_test_feat = get_oof(rf, app_train, app_test, "RF")
-    rf_train_oof.to_csv("RF_oof.csv")
-    rf_test_feat.to_csv("RF_test.csv")
+    check_array(app_train[:2000], accept_sparse="csc", dtype=DTYPE)
