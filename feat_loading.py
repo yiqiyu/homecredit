@@ -18,8 +18,8 @@ def load_extra_feats_post(app_train, app_test):
     tables = []
     ori_train = load_dataframe("app_train_new.csv")
     ori_test = load_dataframe("app_test_new.csv")
-    new_train = app_train[["SK_ID_CURR"]]
-    new_test = app_test[["SK_ID_CURR"]]
+    new_train = pd.DataFrame(app_train[["SK_ID_CURR"]])
+    new_test = pd.DataFrame(app_test[["SK_ID_CURR"]])
     docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
     live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
 
@@ -48,3 +48,24 @@ def load_extra_feats_post(app_train, app_test):
     gc.collect()
 
     return app_train, app_test
+
+
+def del_single_variance_and_nan_too_much(ds):
+    total_rows = ds.shape[0]
+    null_count = 0
+    to_del = []
+    for col in ds.columns:
+        uv = ds[col].unique()
+        if ds[col].isnull().sum() / total_rows > 0.95:
+            print(col)
+            to_del.append(col)
+            null_count += 1
+        elif len(list(uv)) <= 1:
+            print("%s has %s" % (col, uv))
+            to_del.append(col)
+            null_count += 1
+
+    if to_del:
+        ds.drop(to_del, inplace=True)
+
+    print("%s columns need to be dropped" % (null_count))

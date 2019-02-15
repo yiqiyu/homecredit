@@ -76,8 +76,8 @@ if __name__ == '__main__':
     app_test = app_test.fillna(app_test.mean())
     app_train = app_train.fillna(0)
     app_test = app_test.fillna(0)
-    app_train = app_train.replace([np.inf, -np.inf], 0)
-    app_test = app_test.replace([np.inf, -np.inf], 0)
+    app_train = app_train.replace([np.inf, -np.inf], [99999, -99999])
+    app_test = app_test.replace([np.inf, -np.inf], [99999, -99999])
 
     print("start training")
     rf_settings = dict(
