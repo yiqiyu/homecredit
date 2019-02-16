@@ -1,4 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from catboost import CatBoostClassifier
 #try:
 #    from sklearn.impute import SimpleImputer as Imputer
 #except ImportError:
@@ -119,3 +120,18 @@ if __name__ == '__main__':
 
     et_test_feat.columns = ["SK_ID_CURR","TARGET"]
     et_test_feat.to_csv("et_submission.csv", index=False)
+
+    cb_params = {
+        'iterations':9000,
+        'learning_rate':0.05,
+        'depth':10,
+        'l2_leaf_reg':40,
+        'bootstrap_type':'Bernoulli',
+        'subsample':0.8,
+        'scale_pos_weight':5,
+        'eval_metric':'AUC',
+        'metric_period':50,
+        'od_type':'Iter',
+        'od_wait':45,
+        'allow_writing_files':False
+        }
