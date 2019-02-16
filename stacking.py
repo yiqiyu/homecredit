@@ -13,7 +13,7 @@ import gc
 import copy
 import pandas as pd
 
-from feat_loading import load_dataframe, load_extra_feats_post
+from feat_loading import load_dataframe, load_extra_feats_post, del_single_variance_and_nan_too_much
 
 
 class StackingWrapper(object):
@@ -71,28 +71,29 @@ if __name__ == '__main__':
     #     for col in ds:
     #         if ds[np.isinf(ds[col])].any():
     #             ds[col] = ds[col].replace(np.inf, 0)
-
-    app_train = app_train.fillna(app_train.mean())
-    app_test = app_test.fillna(app_test.mean())
-    app_train = app_train.fillna(0)
-    app_test = app_test.fillna(0)
+    to_del = del_single_variance_and_nan_too_much(app_train)
+    app_test = app_test.drop(to_del, axis=1)
+    app_train = app_train.fillna(999999)
+    app_test = app_test.fillna(999999)
     app_train = app_train.replace([np.inf, -np.inf], [99999, -99999])
     app_test = app_test.replace([np.inf, -np.inf], [99999, -99999])
 
     print("start training")
     rf_settings = dict(
-        n_estimators=10000,
+        n_estimators=800,
         max_depth=10,
         min_samples_leaf=20,
         min_samples_split=10,
         min_impurity_decrease=1e-6,
-        n_jobs=2,
-        random_state=50
+        n_jobs=5,
+        random_state=50,
+        verbose=1
     )
     rf = RandomForestClassifier(**rf_settings)
-    rf_train_oof, rf_test_feat = get_oof(rf, app_train[:3000], app_test, "RF")
+    rf_train_oof, rf_test_feat = get_oof(rf, app_train, app_test, "RF")
     print("recording")
     rf_train_oof.to_csv("RF_oof.csv")
     rf_test_feat.to_csv("RF_test.csv")
 
-    # check_array(app_train[:2000], accept_sparse="csc", dtype=DTYPE)
+    rf_test_feat.columns = ["SK_ID_CURR","TARGET"]
+    rf_test_feat.to_csv("rf_submission.csv", index=False)

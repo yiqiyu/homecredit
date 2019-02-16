@@ -56,7 +56,7 @@ def del_single_variance_and_nan_too_much(ds):
     to_del = []
     for col in ds.columns:
         uv = ds[col].unique()
-        if ds[col].isnull().sum() / total_rows > 0.95:
+        if ds[col].isnull().sum() / total_rows > 0.97:
             print(col)
             to_del.append(col)
             null_count += 1
@@ -66,6 +66,7 @@ def del_single_variance_and_nan_too_much(ds):
             null_count += 1
 
     if to_del:
-        ds.drop(to_del, inplace=True)
+        ds.drop(columns=to_del, inplace=True)
 
     print("%s columns need to be dropped" % (null_count))
+    return to_del
