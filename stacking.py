@@ -40,7 +40,7 @@ def get_oof(clf_proto, train, test, target_name, n_folds=5):
     train_oof = np.zeros(X.shape[0])
 
     for i, (train_indices, predict_indices) in enumerate(k_fold.split(X)):
-        print("%s/%s fold processing" % (i, n_folds))
+        print("%s/%s fold processing" % (i+1, n_folds))
         tnX, tny = X.loc[train_indices, :], y[train_indices]
         pX = X.loc[predict_indices, :]
         clf = copy.deepcopy(clf_proto)
@@ -78,22 +78,44 @@ if __name__ == '__main__':
     app_train = app_train.replace([np.inf, -np.inf], [99999, -99999])
     app_test = app_test.replace([np.inf, -np.inf], [99999, -99999])
 
-    print("start training")
-    rf_settings = dict(
-        n_estimators=800,
+    # -------------------------------------Extra Tree--------------------------------------------
+    # print("start training random forest")
+    # rf_settings = dict(
+    #     n_estimators=800,
+    #     max_depth=10,
+    #     min_samples_leaf=20,
+    #     min_samples_split=10,
+    #     min_impurity_decrease=1e-6,
+    #     n_jobs=5,
+    #     random_state=50,
+    #     verbose=1
+    # )
+    # rf = RandomForestClassifier(**rf_settings)
+    # rf_train_oof, rf_test_feat = get_oof(rf, app_train, app_test, "RF")
+    # print("recording")
+    # rf_train_oof.to_csv("RF_oof.csv")
+    # rf_test_feat.to_csv("RF_test.csv")
+    #
+    # rf_test_feat.columns = ["SK_ID_CURR","TARGET"]
+    # rf_test_feat.to_csv("rf_submission.csv", index=False)
+
+    # -------------------------------------Extra Tree--------------------------------------------
+    print("start training extra tree")
+    et_settings = dict(
+        n_estimators=1000,
         max_depth=10,
         min_samples_leaf=20,
         min_samples_split=10,
         min_impurity_decrease=1e-6,
         n_jobs=5,
         random_state=50,
-        verbose=1
+        verbose=2
     )
-    rf = RandomForestClassifier(**rf_settings)
-    rf_train_oof, rf_test_feat = get_oof(rf, app_train, app_test, "RF")
+    et = ExtraTreesClassifier(**et_settings)
+    et_train_oof, et_test_feat = get_oof(et, app_train, app_test, "ET")
     print("recording")
-    rf_train_oof.to_csv("RF_oof.csv")
-    rf_test_feat.to_csv("RF_test.csv")
+    et_train_oof.to_csv("ET_oof.csv")
+    et_test_feat.to_csv("ET_test.csv")
 
-    rf_test_feat.columns = ["SK_ID_CURR","TARGET"]
-    rf_test_feat.to_csv("rf_submission.csv", index=False)
+    et_test_feat.columns = ["SK_ID_CURR","TARGET"]
+    et_test_feat.to_csv("et_submission.csv", index=False)
