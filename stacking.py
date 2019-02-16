@@ -52,7 +52,7 @@ def get_oof(clf_proto, train, test, target_name, n_folds=5):
         gc.enable()
         del tnX, tny, clf
         gc.collect()
-        print("%s/%s fold finished" % (i, n_folds))
+        print("%s/%s fold finished" % (i+1, n_folds))
 
     train_res = pd.DataFrame({'SK_ID_CURR': train_ids, target_name: train_oof})
     test_res = pd.DataFrame({'SK_ID_CURR': test_ids, target_name: test_predictions})
@@ -103,14 +103,14 @@ if __name__ == '__main__':
     # -------------------------------------Extra Tree--------------------------------------------
     print("start training extra tree")
     et_settings = dict(
-        n_estimators=1000,
+        n_estimators=1500,
         max_depth=10,
         min_samples_leaf=20,
         min_samples_split=10,
-        min_impurity_decrease=1e-6,
+        min_impurity_decrease=1e-5,
         n_jobs=5,
         random_state=50,
-        verbose=2
+        verbose=1
     )
     et = ExtraTreesClassifier(**et_settings)
     et_train_oof, et_test_feat = get_oof(et, app_train, app_test, "ET")
