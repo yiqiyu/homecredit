@@ -1,11 +1,12 @@
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
+from sklearn.neural_network import MLPClassifier
 #try:
 #    from sklearn.impute import SimpleImputer as Imputer
 #except ImportError:
 #    from sklearn.preprocessing import Imputer
-from sklearn.preprocessing import Imputer
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.tree._tree import DTYPE
 
 from sklearn.utils.validation import check_array
@@ -184,3 +185,39 @@ if __name__ == '__main__':
 
     xg_test_feat.columns = ["SK_ID_CURR", "TARGET"]
     xg_test_feat.to_csv("xg_submission.csv", index=False)
+
+
+    # -----------------------------------------MLP---------------------------------------------
+    print("start MLP")
+    # scaler = MinMaxScaler(feature_range=(-1, 1))
+    # train_ids = app_train['SK_ID_CURR']
+    # test_ids = app_test['SK_ID_CURR']
+    # y = app_train["TARGET"]
+    # X = app_train.drop(["TARGET", 'SK_ID_CURR'], axis=1)
+    # test = app_test.drop(['SK_ID_CURR'], axis=1)
+    # test = scaler.transform(test)
+    # scaler.fit(X, y)
+    for col in app_train.columns:
+        if col in ['SK_ID_CURR', "TARGET"]:
+            continue
+        if app_train[col].dtype == "boolean":
+            app_train[col] = app_train[col].replace([True, False], [1, -1])
+            app_test[col] = app_test[col].replace([True, False], [1, -1])
+        else:
+            app_train[col] = (app_train[col] - app_train[col].mean())/app_train[col].std()
+            app_test[col] = (app_test[col] - app_test[col].mean())/app_test[col].std()
+
+    app_train = app_train.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
+    app_test = app_test.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
+
+    mlp_params = dict(
+
+    )
+    mlp = MLPClassifier(**mlp_params)
+    mlp_train_oof, mlp_test_feat = get_oof(mlp, app_train, app_test, "MLP", early_stopping_rounds=200)
+    print("recording")
+    mlp_train_oof.to_csv("MLP_oof.csv")
+    mlp_test_feat.to_csv("MLP_test.csv")
+
+    mlp_test_feat.columns = ["SK_ID_CURR", "TARGET"]
+    mlp_test_feat.to_csv("mlp_submission.csv", index=False)
