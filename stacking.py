@@ -2,6 +2,8 @@ from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.feature_selection import SelectKBest
 #try:
 #    from sklearn.impute import SimpleImputer as Imputer
 #except ImportError:
@@ -32,6 +34,7 @@ class StackingWrapper(object):
 
 
 def get_oof(clf_proto, train, test, target_name, n_folds=5, **fit_params):
+    print("start oof training")
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
     test = test.drop(['SK_ID_CURR'], axis=1)
@@ -161,34 +164,35 @@ if __name__ == '__main__':
     # cb_test_feat.to_csv("cb_submission.csv", index=False)
 
     # -------------------------------------xgboost--------------------------------------------
-    print("start xgboost")
-    xg_params = dict(
-        n_estimators=150,
-        max_depth=10,
-        colsample_bytree=0.7,
-        reg_alpha=0.2,
-        reg_lamda=0.4,
-        n_jobs=1,
-        learning_rate=0.1,
-        silent=False,
-        min_child_weight=20,
-        eval_metric="auc",
-        objective="binary:logistic",
-        seed=50
-    )
-
-    xg = XGBClassifier(**xg_params)
-    xg_train_oof, xg_test_feat = get_oof(xg, app_train, app_test, "XG", early_stopping_rounds=200)
-    print("recording")
-    xg_train_oof.to_csv("XG_oof.csv")
-    xg_test_feat.to_csv("XG_test.csv")
-
-    xg_test_feat.columns = ["SK_ID_CURR", "TARGET"]
-    xg_test_feat.to_csv("xg_submission.csv", index=False)
+    # print("start xgboost")
+    # xg_params = dict(
+    #     n_estimators=150,
+    #     max_depth=10,
+    #     colsample_bytree=0.7,
+    #     reg_alpha=0.2,
+    #     reg_lamda=0.4,
+    #     n_jobs=1,
+    #     learning_rate=0.1,
+    #     silent=False,
+    #     min_child_weight=20,
+    #     eval_metric="auc",
+    #     objective="binary:logistic",
+    #     seed=50
+    # )
+    #
+    # xg = XGBClassifier(**xg_params)
+    # xg_train_oof, xg_test_feat = get_oof(xg, app_train, app_test, "XG", early_stopping_rounds=200)
+    # print("recording")
+    # xg_train_oof.to_csv("XG_oof.csv")
+    # xg_test_feat.to_csv("XG_test.csv")
+    #
+    # xg_test_feat.columns = ["SK_ID_CURR", "TARGET"]
+    # xg_test_feat.to_csv("xg_submission.csv", index=False)
 
 
     # -----------------------------------------MLP---------------------------------------------
     print("start MLP")
+    gc.enable()
     # scaler = MinMaxScaler(feature_range=(-1, 1))
     # train_ids = app_train['SK_ID_CURR']
     # test_ids = app_test['SK_ID_CURR']
@@ -200,24 +204,70 @@ if __name__ == '__main__':
     for col in app_train.columns:
         if col in ['SK_ID_CURR', "TARGET"]:
             continue
-        if app_train[col].dtype == "boolean":
+        if app_train[col].dtype == "bool":
             app_train[col] = app_train[col].replace([True, False], [1, -1])
             app_test[col] = app_test[col].replace([True, False], [1, -1])
         else:
             app_train[col] = (app_train[col] - app_train[col].mean())/app_train[col].std()
             app_test[col] = (app_test[col] - app_test[col].mean())/app_test[col].std()
-
-    app_train = app_train.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
-    app_test = app_test.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
+        gc.collect()
+    print("finished normalization")
+    app_train.fillna(0, inplace=True)
+    app_test.fillna(0, inplace=True)
+    gc.collect()
+    print("finished fillna")
+    app_train.replace([np.inf, -np.inf], [1, -1], inplace=True)
+    app_test.replace([np.inf, -np.inf], [1, -1], inplace=True)
+    print("finished inf replacement")
+    gc.collect()
+    #
+    # skb = SelectKBest(k=250)
+    # skb.fit(X, y)
 
     mlp_params = dict(
-
+        hidden_layer_sizes=(400,),
+        learning_rate_init=0.05,
+        learning_rate="adaptive",
+        max_iter=1000,
+        early_stopping=True,
+        random_state=50,
+        verbose=True
     )
     mlp = MLPClassifier(**mlp_params)
-    mlp_train_oof, mlp_test_feat = get_oof(mlp, app_train, app_test, "MLP", early_stopping_rounds=200)
+    mlp_train_oof, mlp_test_feat = get_oof(mlp, app_train, app_test, "MLP",n_folds=5)
     print("recording")
     mlp_train_oof.to_csv("MLP_oof.csv")
     mlp_test_feat.to_csv("MLP_test.csv")
 
     mlp_test_feat.columns = ["SK_ID_CURR", "TARGET"]
     mlp_test_feat.to_csv("mlp_submission.csv", index=False)
+
+    # -----------------------------------------KNN---------------------------------------------
+    # print("start KNN")
+    # for col in app_train.columns:
+    #     if col in ['SK_ID_CURR', "TARGET"]:
+    #         continue
+    #     if app_train[col].dtype == "bool":
+    #         app_train[col] = app_train[col].replace([True, False], [1, -1])
+    #         app_test[col] = app_test[col].replace([True, False], [1, -1])
+    #     else:
+    #         app_train[col] = (app_train[col] - app_train[col].mean()) / app_train[col].std()
+    #         app_test[col] = (app_test[col] - app_test[col].mean()) / app_test[col].std()
+    #
+    # app_train = app_train.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
+    # app_test = app_test.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
+    #
+    #
+    # knn_params = dict(
+    #     n_neighbors=10,
+    #     leaf_size=50,
+    #     n_jobs=3
+    # )
+    # knn = KNeighborsClassifier(**knn_params)
+    # KNN_train_oof, KNN_test_feat = get_oof(knn, app_train, app_test, "KNN")
+    # print("recording")
+    # KNN_train_oof.to_csv("knn_oof.csv")
+    # KNN_test_feat.to_csv("knn_test.csv")
+    #
+    # KNN_test_feat.columns = ["SK_ID_CURR", "TARGET"]
+    # KNN_test_feat.to_csv("knn_submission.csv", index=False)
