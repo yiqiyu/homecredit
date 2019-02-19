@@ -216,8 +216,17 @@ if __name__ == '__main__':
     app_test.fillna(0, inplace=True)
     gc.collect()
     print("finished fillna")
-    app_train.replace([np.inf, -np.inf], [1, -1], inplace=True)
-    app_test.replace([np.inf, -np.inf], [1, -1], inplace=True)
+    for col in app_train.columns:
+        if col in ['SK_ID_CURR', "TARGET"]:
+            continue
+        if (not np.isfinite(app_train[col]).all()) or (not np.isfinite(app_test[col]).all()):
+            app_train[col] = app_train[col].replace([np.inf, -np.inf], 0)
+            app_test[col] = app_test[col].replace([np.inf, -np.inf],
+                                                    0)
+            gc.collect()
+
+    # app_train.replace([np.inf, -np.inf], [1, -1], inplace=True)       # 内存爆炸
+    # app_test.replace([np.inf, -np.inf], [1, -1], inplace=True)
     print("finished inf replacement")
     gc.collect()
     #
@@ -225,10 +234,10 @@ if __name__ == '__main__':
     # skb.fit(X, y)
 
     mlp_params = dict(
-        hidden_layer_sizes=(400,),
+        hidden_layer_sizes=(250,),
         learning_rate_init=0.05,
         learning_rate="adaptive",
-        max_iter=1000,
+        max_iter=100,
         early_stopping=True,
         random_state=50,
         verbose=True
