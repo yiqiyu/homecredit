@@ -1,3 +1,5 @@
+import pickle
+
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
@@ -33,7 +35,7 @@ class StackingWrapper(object):
         return getattr(self.clf, item)
 
 
-def get_oof(clf_proto, train, test, target_name, n_folds=5, **fit_params):
+def get_oof(clf_proto, train, test, target_name, n_folds=5, save_state=False, load_previous=False, **fit_params):
     print("start oof training")
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
@@ -42,20 +44,36 @@ def get_oof(clf_proto, train, test, target_name, n_folds=5, **fit_params):
     X = train.drop(["TARGET", 'SK_ID_CURR'], axis=1)
 
     k_fold = KFold(n_splits=n_folds, shuffle=True, random_state=250)
-    test_predictions = np.zeros(test.shape[0])
-    train_oof = np.zeros(X.shape[0])
+    if not load_previous:
+        test_predictions = np.zeros(test.shape[0])
+        train_oof = np.zeros(X.shape[0])
+    else:
+        test_predictions = np.fromfile("states/test.bin")           # dtype needed?
+        train_oof = np.fromfile("states/train.bin")
+        with open("prev_state.bin", "rb") as f:
+            prev_fold = pickle.load(f)
 
     for i, (train_indices, predict_indices) in enumerate(k_fold.split(X)):
         print("%s/%s fold processing" % (i+1, n_folds))
+        if load_previous:
+            if prev_fold >= i:
+                print("done last time")
+                continue
+
         tnX, tny = X.loc[train_indices, :], y[train_indices]
         pX = X.loc[predict_indices, :]
         clf = copy.deepcopy(clf_proto)
         clf.fit(tnX, tny, **fit_params)
         train_oof[predict_indices] = clf.predict_proba(pX)[:, 1]
         test_predictions += clf.predict_proba(test)[:, 1] / k_fold.n_splits
+        if save_state:
+            test_predictions.tofile("states/test.bin")
+            train_oof.tofile("states/train.bin")
+            with open("prev_state.bin", "wb") as f:
+                pickle.dump(i, f)
 
         gc.enable()
-        del tnX, tny, clf
+        del tnX, tny, clf, pX
         gc.collect()
         print("%s/%s fold finished" % (i+1, n_folds))
 
