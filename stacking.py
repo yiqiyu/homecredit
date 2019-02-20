@@ -252,10 +252,10 @@ if __name__ == '__main__':
     # skb.fit(X, y)
 
     mlp_params = dict(
-        hidden_layer_sizes=(250,),
-        learning_rate_init=0.05,
+        hidden_layer_sizes=(300,),
+        learning_rate_init=0.01,
         learning_rate="adaptive",
-        max_iter=100,
+        max_iter=200,
         early_stopping=True,
         random_state=50,
         verbose=True
