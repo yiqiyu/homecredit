@@ -9,13 +9,19 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False):
+def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False, lgbm_params=None):
     train_ids = train['SK_ID_CURR']
     test_ids = test['SK_ID_CURR']
     test = test.drop(['SK_ID_CURR'], axis=1)
     y = train["TARGET"]
     X = train.drop(["TARGET", 'SK_ID_CURR'], axis=1)
     feature_names = list(X.columns)
+    lgbm_params = dict(
+        boosting_type="goss", n_estimators=10000, objective='binary',
+        learning_rate=0.02, n_jobs=parallel, random_state=50,
+        subsample=0.81, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
+        max_depth=8, colsample_bytree=0.92, num_leaves=35
+    ) if not lgbm_params else lgbm_params
 
     k_fold = KFold(n_splits=5, shuffle=True, random_state=50)
     feature_importance_values = np.zeros(len(feature_names))
@@ -31,11 +37,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False
         # Validation data for the fold
         vX, vy = X.loc[valid_indices, :], y[valid_indices]
 
-        lgbm = LGBMClassifier(boosting_type="goss", n_estimators=10000, objective='binary',
-                              learning_rate=0.02, n_jobs=parallel, random_state=50,
-                              subsample=0.81, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
-                              max_depth=8, colsample_bytree=0.92, num_leaves=35
-                              )
+        lgbm = LGBMClassifier(**lgbm_params)
 
         lgbm.fit(tnX, tny, eval_metric="auc", categorical_feature=cat_indices, feature_name='auto',
                  eval_set=[(vX, vy), (tnX, tny)], eval_names=['valid', 'train'],
