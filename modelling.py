@@ -41,7 +41,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False
 
         lgbm.fit(tnX, tny, eval_metric="auc", categorical_feature=cat_indices, feature_name='auto',
                  eval_set=[(vX, vy), (tnX, tny)], eval_names=['valid', 'train'],
-                 early_stopping_rounds=300, verbose=200)
+                 early_stopping_rounds=400, verbose=200)
         test_predictions += lgbm.predict_proba(test, num_iteration=best_iteration)[:, 1] / k_fold.n_splits
 
         best_iteration = lgbm.best_iteration_
