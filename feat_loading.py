@@ -47,6 +47,30 @@ def load_extra_feats_post(app_train, app_test):
     del ori_train, ori_test
     gc.collect()
 
+    # for df in [app_train, app_test]:
+    #     df['BUREAU_INCOME_CREDIT_RATIO'] = df['BURO_AMT_CREDIT_SUM_MEAN'] / df['AMT_INCOME_TOTAL']
+    #     df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
+    #
+    #     df['CURRENT_TO_APPROVED_CREDIT_MIN_RATIO'] = df['APPROVED_AMT_CREDIT_MIN'] / df['AMT_CREDIT']
+    #     df['CURRENT_TO_APPROVED_CREDIT_MAX_RATIO'] = df['APPROVED_AMT_CREDIT_MAX'] / df['AMT_CREDIT']
+    #     df['CURRENT_TO_APPROVED_CREDIT_MEAN_RATIO'] = df['APPROVED_AMT_CREDIT_MEAN'] / df['AMT_CREDIT']
+    #
+    #     df['CURRENT_TO_APPROVED_ANNUITY_MAX_RATIO'] = df['APPROVED_AMT_ANNUITY_MAX'] / df['AMT_ANNUITY']
+    #     df['CURRENT_TO_APPROVED_ANNUITY_MEAN_RATIO'] = df['APPROVED_AMT_ANNUITY_MEAN'] / df['AMT_ANNUITY']
+    #     df['PAYMENT_MIN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MIN'] / df['AMT_ANNUITY']
+    #     df['PAYMENT_MAX_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MAX'] / df['AMT_ANNUITY']
+    #     df['PAYMENT_MEAN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MEAN'] / df['AMT_ANNUITY']
+    #     # PREVIOUS TO CURRENT CREDIT TO ANNUITY RATIO
+    #     df['CTA_CREDIT_TO_ANNUITY_MAX_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MAX'] / df[
+    #         'CREDIT_TO_ANNUITY_RATIO']
+    #     df['CTA_CREDIT_TO_ANNUITY_MEAN_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MEAN'] / df[
+    #         'CREDIT_TO_ANNUITY_RATIO']
+    #     # DAYS DIFFERENCES AND RATIOS
+    #     df['DAYS_DECISION_MEAN_TO_BIRTH'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_BIRTH']
+    #     df['DAYS_CREDIT_MEAN_TO_BIRTH'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_BIRTH']
+    #     df['DAYS_DECISION_MEAN_TO_EMPLOYED'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_EMPLOYED']
+    #     df['DAYS_CREDIT_MEAN_TO_EMPLOYED'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_EMPLOYED']
+
     return app_train, app_test
 
 
@@ -103,6 +127,10 @@ def load_bureau(bureau, buro_balance):
     del buro_balance_agg
     gc.collect()
 
+    bureau['STATUS_12345'] = 0
+    for i in range(1, 6):
+        bureau['STATUS_12345'] += bureau['STATUS_{}'.format(i)]
+
     bureau["DAYS_CREDIT_ITERVAL"] = bureau["DAYS_CREDIT"] - bureau["DAYS_CREDIT_ENDDATE"]
     bureau["CREDIT_SUM_DEBT_RATIO"] = bureau["AMT_CREDIT_SUM_DEBT"] / bureau["AMT_CREDIT_SUM"]
     bureau["CREDIT_SUM_OVERDUE_RATIO"] = bureau["AMT_CREDIT_SUM_OVERDUE"] / bureau["AMT_CREDIT_SUM"]
@@ -111,7 +139,15 @@ def load_bureau(bureau, buro_balance):
     bureau["ANNUITY_DEBT_RATIO"] = bureau["AMT_CREDIT_SUM_DEBT"] / bureau["AMT_ANNUITY"]
     bureau["ANNUITY_OVERDUE_RATIO"] = bureau["AMT_CREDIT_SUM_OVERDUE"] / bureau["AMT_ANNUITY"]
     bureau["MAX_OVERDUE_RATIO"] = bureau["AMT_CREDIT_SUM_OVERDUE"] / bureau["AMT_CREDIT_MAX_OVERDUE"]
+
+    bureau['ENDDATE_DIF'] = bureau['DAYS_CREDIT_ENDDATE'] - bureau['DAYS_ENDDATE_FACT']
+    bureau['DEBT_CREDIT_DIFF'] = bureau['AMT_CREDIT_SUM'] - bureau['AMT_CREDIT_SUM_DEBT']
     num_aggregations = {
+        'STATUS_0': ['mean'],
+        'STATUS_1': ['mean'],
+        'STATUS_12345': ['mean'],
+        'STATUS_C': ['mean'],
+        'STATUS_X': ['mean'],
         'DAYS_CREDIT': ['min', 'max', 'mean', 'var'],
         'DAYS_CREDIT_ENDDATE': ['min', 'max', 'mean'],
         'DAYS_CREDIT_UPDATE': ['mean'],
@@ -135,20 +171,49 @@ def load_bureau(bureau, buro_balance):
         "ANNUITY_DEBT_RATIO": ['min', 'max', 'mean', 'var'],
         "ANNUITY_OVERDUE_RATIO": ['min', 'max', 'mean', 'var'],
         "MAX_OVERDUE_RATIO": ['min', 'max', 'mean', 'var'],
+        'DEBT_CREDIT_DIFF': ['mean', 'sum'],
+        'ENDDATE_DIF': ['mean', 'sum', "max"],
     }
     cat_aggregations = {col: ["mean"] for col in bureau.columns if len(bureau[col].unique()) == 2}
     bureau_agg = bureau.groupby('SK_ID_CURR').agg({**num_aggregations, **cat_aggregations})
     bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
 
+    BUREAU_ACTIVE_AGG = {
+        'DAYS_CREDIT': ['max', 'mean'],
+        'DAYS_CREDIT_ENDDATE': ['min', 'max'],
+        'AMT_CREDIT_MAX_OVERDUE': ['max', 'mean'],
+        'AMT_CREDIT_SUM': ['max', 'sum'],
+        'AMT_CREDIT_SUM_DEBT': ['mean', 'sum'],
+        'AMT_CREDIT_SUM_OVERDUE': ['max', 'mean'],
+        'DAYS_CREDIT_UPDATE': ['min', 'mean'],
+        'DEBT_PERCENTAGE': ['mean'],
+        'DEBT_CREDIT_DIFF': ['mean'],
+        'CREDIT_TO_ANNUITY_RATIO': ['mean'],
+        'MONTHS_BALANCE_MEAN': ['mean', 'var'],
+        'MONTHS_BALANCE_SIZE': ['mean', 'sum'],
+    }
+
+    BUREAU_CLOSED_AGG = {
+        'DAYS_CREDIT': ['max', 'var'],
+        'DAYS_CREDIT_ENDDATE': ['max'],
+        'AMT_CREDIT_MAX_OVERDUE': ['max', 'mean'],
+        'AMT_CREDIT_SUM_OVERDUE': ['mean'],
+        'AMT_CREDIT_SUM': ['max', 'mean', 'sum'],
+        'AMT_CREDIT_SUM_DEBT': ['max', 'sum'],
+        'DAYS_CREDIT_UPDATE': ['max'],
+        'ENDDATE_DIF': ['mean'],
+        'STATUS_12345': ['mean'],
+    }
+
     active = bureau[bureau['CREDIT_ACTIVE_Active'] == 1]
-    active_agg = active.groupby('SK_ID_CURR').agg(num_aggregations)
+    active_agg = active.groupby('SK_ID_CURR').agg(BUREAU_ACTIVE_AGG)
     active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
     bureau_agg = bureau_agg.join(active_agg, how='left', on='SK_ID_CURR')
     del active, active_agg
     gc.collect()
     # Bureau: Closed credits - using only numerical aggregations
     closed = bureau[bureau['CREDIT_ACTIVE_Closed'] == 1]
-    closed_agg = closed.groupby('SK_ID_CURR').agg(num_aggregations)
+    closed_agg = closed.groupby('SK_ID_CURR').agg(BUREAU_CLOSED_AGG)
     closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
     bureau_agg = bureau_agg.join(closed_agg, how='left', on='SK_ID_CURR')
     del closed, closed_agg
@@ -335,13 +400,13 @@ def load_all_tables(train="app_train_new.csv", test="app_test_new.csv"):
         del df
         gc.collect()
 
-    to_del = del_single_variance_and_nan_too_much(app_train)
+    to_del = del_useless_cols(app_train)
     app_test = app_test.drop(to_del, axis=1)
 
     return app_train, app_test
 
 
-def del_single_variance_and_nan_too_much(ds):
+def del_useless_cols(ds):
     total_rows = ds.shape[0]
     null_count = 0
     to_del = []

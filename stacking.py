@@ -89,7 +89,7 @@ if __name__ == '__main__':
     app_train = load_dataframe("train_all.csv")
     app_test = load_dataframe("test_all.csv")
     app_train, app_test = load_extra_feats_post(app_train, app_test)
-    to_del = del_single_variance_and_nan_too_much(app_train)
+    to_del = del_useless_cols(app_train)
     app_test = app_test.drop(to_del, axis=1)
     # app_train = app_train.fillna(999999)
     # app_test = app_test.fillna(999999)
@@ -209,16 +209,68 @@ if __name__ == '__main__':
 
 
     # -----------------------------------------MLP---------------------------------------------
-    print("start MLP")
-    gc.enable()
-    # scaler = MinMaxScaler(feature_range=(-1, 1))
-    # train_ids = app_train['SK_ID_CURR']
-    # test_ids = app_test['SK_ID_CURR']
-    # y = app_train["TARGET"]
-    # X = app_train.drop(["TARGET", 'SK_ID_CURR'], axis=1)
-    # test = app_test.drop(['SK_ID_CURR'], axis=1)
-    # test = scaler.transform(test)
-    # scaler.fit(X, y)
+    # print("start MLP")
+    # gc.enable()
+    # # scaler = MinMaxScaler(feature_range=(-1, 1))
+    # # train_ids = app_train['SK_ID_CURR']
+    # # test_ids = app_test['SK_ID_CURR']
+    # # y = app_train["TARGET"]
+    # # X = app_train.drop(["TARGET", 'SK_ID_CURR'], axis=1)
+    # # test = app_test.drop(['SK_ID_CURR'], axis=1)
+    # # test = scaler.transform(test)
+    # # scaler.fit(X, y)
+    # for col in app_train.columns:
+    #     if col in ['SK_ID_CURR', "TARGET"]:
+    #         continue
+    #     if app_train[col].dtype == "bool":
+    #         app_train[col] = app_train[col].replace([True, False], [1, -1])
+    #         app_test[col] = app_test[col].replace([True, False], [1, -1])
+    #     else:
+    #         app_train[col] = (app_train[col] - app_train[col].mean())/app_train[col].std()
+    #         app_test[col] = (app_test[col] - app_test[col].mean())/app_test[col].std()
+    #     gc.collect()
+    # print("finished normalization")
+    # app_train.fillna(0, inplace=True)
+    # app_test.fillna(0, inplace=True)
+    # gc.collect()
+    # print("finished fillna")
+    # for col in app_train.columns:
+    #     if col in ['SK_ID_CURR', "TARGET"]:
+    #         continue
+    #     if (not np.isfinite(app_train[col]).all()) or (not np.isfinite(app_test[col]).all()):
+    #         app_train[col] = app_train[col].replace([np.inf, -np.inf], 0)
+    #         app_test[col] = app_test[col].replace([np.inf, -np.inf],
+    #                                                 0)
+    #         gc.collect()
+    #
+    # # app_train.replace([np.inf, -np.inf], [1, -1], inplace=True)       # 内存爆炸
+    # # app_test.replace([np.inf, -np.inf], [1, -1], inplace=True)
+    # print("finished inf replacement")
+    # gc.collect()
+    # #
+    # # skb = SelectKBest(k=250)
+    # # skb.fit(X, y)
+    #
+    # mlp_params = dict(
+    #     hidden_layer_sizes=(300,),
+    #     learning_rate_init=0.01,
+    #     learning_rate="adaptive",
+    #     max_iter=200,
+    #     early_stopping=True,
+    #     random_state=50,
+    #     verbose=True
+    # )
+    # mlp = MLPClassifier(**mlp_params)
+    # mlp_train_oof, mlp_test_feat = get_oof(mlp, app_train, app_test, "MLP",n_folds=5)
+    # print("recording")
+    # mlp_train_oof.to_csv("MLP_oof.csv")
+    # mlp_test_feat.to_csv("MLP_test.csv")
+    #
+    # mlp_test_feat.columns = ["SK_ID_CURR", "TARGET"]
+    # mlp_test_feat.to_csv("mlp_submission.csv", index=False)
+
+    # -----------------------------------------KNN---------------------------------------------
+    print("start KNN")
     for col in app_train.columns:
         if col in ['SK_ID_CURR', "TARGET"]:
             continue
@@ -243,58 +295,18 @@ if __name__ == '__main__':
                                                     0)
             gc.collect()
 
-    # app_train.replace([np.inf, -np.inf], [1, -1], inplace=True)       # 内存爆炸
-    # app_test.replace([np.inf, -np.inf], [1, -1], inplace=True)
-    print("finished inf replacement")
-    gc.collect()
-    #
-    # skb = SelectKBest(k=250)
-    # skb.fit(X, y)
 
-    mlp_params = dict(
-        hidden_layer_sizes=(300,),
-        learning_rate_init=0.01,
-        learning_rate="adaptive",
-        max_iter=200,
-        early_stopping=True,
-        random_state=50,
-        verbose=True
+    knn_params = dict(
+        n_neighbors=10,
+        leaf_size=50,
+        n_jobs=5,
+        metric="euclidean"
     )
-    mlp = MLPClassifier(**mlp_params)
-    mlp_train_oof, mlp_test_feat = get_oof(mlp, app_train, app_test, "MLP",n_folds=5)
+    knn = KNeighborsClassifier(**knn_params)
+    KNN_train_oof, KNN_test_feat = get_oof(knn, app_train, app_test, "KNN")
     print("recording")
-    mlp_train_oof.to_csv("MLP_oof.csv")
-    mlp_test_feat.to_csv("MLP_test.csv")
+    KNN_train_oof.to_csv("knn_oof.csv")
+    KNN_test_feat.to_csv("knn_test.csv")
 
-    mlp_test_feat.columns = ["SK_ID_CURR", "TARGET"]
-    mlp_test_feat.to_csv("mlp_submission.csv", index=False)
-
-    # -----------------------------------------KNN---------------------------------------------
-    # print("start KNN")
-    # for col in app_train.columns:
-    #     if col in ['SK_ID_CURR', "TARGET"]:
-    #         continue
-    #     if app_train[col].dtype == "bool":
-    #         app_train[col] = app_train[col].replace([True, False], [1, -1])
-    #         app_test[col] = app_test[col].replace([True, False], [1, -1])
-    #     else:
-    #         app_train[col] = (app_train[col] - app_train[col].mean()) / app_train[col].std()
-    #         app_test[col] = (app_test[col] - app_test[col].mean()) / app_test[col].std()
-    #
-    # app_train = app_train.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
-    # app_test = app_test.replace([np.inf, -np.inf, np.nan], [1, -1, 0])
-    #
-    #
-    # knn_params = dict(
-    #     n_neighbors=10,
-    #     leaf_size=50,
-    #     n_jobs=3
-    # )
-    # knn = KNeighborsClassifier(**knn_params)
-    # KNN_train_oof, KNN_test_feat = get_oof(knn, app_train, app_test, "KNN")
-    # print("recording")
-    # KNN_train_oof.to_csv("knn_oof.csv")
-    # KNN_test_feat.to_csv("knn_test.csv")
-    #
-    # KNN_test_feat.columns = ["SK_ID_CURR", "TARGET"]
-    # KNN_test_feat.to_csv("knn_submission.csv", index=False)
+    KNN_test_feat.columns = ["SK_ID_CURR", "TARGET"]
+    KNN_test_feat.to_csv("knn_submission.csv", index=False)
