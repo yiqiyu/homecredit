@@ -103,7 +103,7 @@ if __name__ == '__main__':
     # app_train = load_dataframe("train_all_cat.csv")
     # app_test = load_dataframe("test_all_cat.csv")
 
-    # -------------------------------------Extra Tree--------------------------------------------
+    # -------------------------------------random forest--------------------------------------------
     # print("start training random forest")
     # rf_settings = dict(
     #     n_estimators=800,

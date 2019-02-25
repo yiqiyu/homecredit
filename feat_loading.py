@@ -7,6 +7,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
+def get_age_label(days_birth):
+    """ Return the age group label (int). """
+    age_years = -days_birth / 365
+    if age_years < 27: return 1
+    elif age_years < 40: return 2
+    elif age_years < 50: return 3
+    elif age_years < 65: return 4
+    elif age_years < 99: return 5
+    else: return 0
+
+
 def load_dataframe(loc):
     df = pd.read_csv(loc).reset_index(drop = True)
     if "Unnamed: 0" in df.columns:
@@ -16,60 +27,60 @@ def load_dataframe(loc):
 
 def load_extra_feats_post(app_train, app_test):
     tables = []
-    ori_train = load_dataframe("app_train_new.csv")
-    ori_test = load_dataframe("app_test_new.csv")
-    new_train = pd.DataFrame(app_train[["SK_ID_CURR"]])
-    new_test = pd.DataFrame(app_test[["SK_ID_CURR"]])
-    docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
-    live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
-
-    for df, new in [(ori_train, new_train), (ori_test, new_test)]:
-        new['document_sum'] = df['FLAG_DOCUMENT_2'] + df['FLAG_DOCUMENT_3'] + df['FLAG_DOCUMENT_4'] + df[
-            'FLAG_DOCUMENT_5'] + df['FLAG_DOCUMENT_6'] + df['FLAG_DOCUMENT_7'] + df['FLAG_DOCUMENT_8'] + df[
-                                  'FLAG_DOCUMENT_9'] + df['FLAG_DOCUMENT_10'] + df['FLAG_DOCUMENT_11'] + df[
-                                  'FLAG_DOCUMENT_12'] + df['FLAG_DOCUMENT_13'] + df['FLAG_DOCUMENT_14'] + df[
-                                  'FLAG_DOCUMENT_15'] + df['FLAG_DOCUMENT_16'] + df['FLAG_DOCUMENT_17'] + df[
-                                  'FLAG_DOCUMENT_18'] + df['FLAG_DOCUMENT_19'] + df['FLAG_DOCUMENT_20'] + df[
-                                  'FLAG_DOCUMENT_21']
-        new['credit_minus_goods'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
-        new['reg_div_publish'] = df['DAYS_REGISTRATION'] / df['DAYS_ID_PUBLISH']
-        new['birth_div_reg'] = df['DAYS_BIRTH'] / df['DAYS_REGISTRATION']
-        new['ANN_LENGTH_EMPLOYED_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) / df['DAYS_EMPLOYED']
-        new['age_finish'] = df['DAYS_BIRTH'] * (-1.0 / 365) + (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (
-                    1.0 / 12)  # how old when finish
-        new['ANN_LENGTH_AGE_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (1.0 / 12) / df['DAYS_BIRTH'] * (
-                    -1.0 / 365)
-        new['NEW_DOC_IND_KURT'] = df[docs].kurtosis(axis=1)
-        new['NEW_LIVE_IND_SUM'] = df[live].sum(axis=1)
-
-    app_train = app_train.merge(right=new_train.reset_index(), how='left', on='SK_ID_CURR')
-    app_test = app_test.merge(right=new_test.reset_index(), how='left', on='SK_ID_CURR')
-    del ori_train, ori_test
-    gc.collect()
-
-    # for df in [app_train, app_test]:
-    #     df['BUREAU_INCOME_CREDIT_RATIO'] = df['BURO_AMT_CREDIT_SUM_MEAN'] / df['AMT_INCOME_TOTAL']
-    #     df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
+    # ori_train = load_dataframe("app_train_new.csv")
+    # ori_test = load_dataframe("app_test_new.csv")
+    # new_train = pd.DataFrame(app_train[["SK_ID_CURR"]])
+    # new_test = pd.DataFrame(app_test[["SK_ID_CURR"]])
+    # docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
+    # live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
     #
-    #     df['CURRENT_TO_APPROVED_CREDIT_MIN_RATIO'] = df['APPROVED_AMT_CREDIT_MIN'] / df['AMT_CREDIT']
-    #     df['CURRENT_TO_APPROVED_CREDIT_MAX_RATIO'] = df['APPROVED_AMT_CREDIT_MAX'] / df['AMT_CREDIT']
-    #     df['CURRENT_TO_APPROVED_CREDIT_MEAN_RATIO'] = df['APPROVED_AMT_CREDIT_MEAN'] / df['AMT_CREDIT']
+    # for df, new in [(ori_train, new_train), (ori_test, new_test)]:
+    #     new['document_sum'] = df['FLAG_DOCUMENT_2'] + df['FLAG_DOCUMENT_3'] + df['FLAG_DOCUMENT_4'] + df[
+    #         'FLAG_DOCUMENT_5'] + df['FLAG_DOCUMENT_6'] + df['FLAG_DOCUMENT_7'] + df['FLAG_DOCUMENT_8'] + df[
+    #                               'FLAG_DOCUMENT_9'] + df['FLAG_DOCUMENT_10'] + df['FLAG_DOCUMENT_11'] + df[
+    #                               'FLAG_DOCUMENT_12'] + df['FLAG_DOCUMENT_13'] + df['FLAG_DOCUMENT_14'] + df[
+    #                               'FLAG_DOCUMENT_15'] + df['FLAG_DOCUMENT_16'] + df['FLAG_DOCUMENT_17'] + df[
+    #                               'FLAG_DOCUMENT_18'] + df['FLAG_DOCUMENT_19'] + df['FLAG_DOCUMENT_20'] + df[
+    #                               'FLAG_DOCUMENT_21']
+    #     new['credit_minus_goods'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
+    #     new['reg_div_publish'] = df['DAYS_REGISTRATION'] / df['DAYS_ID_PUBLISH']
+    #     new['birth_div_reg'] = df['DAYS_BIRTH'] / df['DAYS_REGISTRATION']
+    #     new['ANN_LENGTH_EMPLOYED_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) / df['DAYS_EMPLOYED']
+    #     new['age_finish'] = df['DAYS_BIRTH'] * (-1.0 / 365) + (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (
+    #                 1.0 / 12)  # how old when finish
+    #     new['ANN_LENGTH_AGE_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (1.0 / 12) / df['DAYS_BIRTH'] * (
+    #                 -1.0 / 365)
+    #     new['NEW_DOC_IND_KURT'] = df[docs].kurtosis(axis=1)
+    #     new['NEW_LIVE_IND_SUM'] = df[live].sum(axis=1)
     #
-    #     df['CURRENT_TO_APPROVED_ANNUITY_MAX_RATIO'] = df['APPROVED_AMT_ANNUITY_MAX'] / df['AMT_ANNUITY']
-    #     df['CURRENT_TO_APPROVED_ANNUITY_MEAN_RATIO'] = df['APPROVED_AMT_ANNUITY_MEAN'] / df['AMT_ANNUITY']
-    #     df['PAYMENT_MIN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MIN'] / df['AMT_ANNUITY']
-    #     df['PAYMENT_MAX_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MAX'] / df['AMT_ANNUITY']
-    #     df['PAYMENT_MEAN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MEAN'] / df['AMT_ANNUITY']
-    #     # PREVIOUS TO CURRENT CREDIT TO ANNUITY RATIO
-    #     df['CTA_CREDIT_TO_ANNUITY_MAX_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MAX'] / df[
-    #         'CREDIT_TO_ANNUITY_RATIO']
-    #     df['CTA_CREDIT_TO_ANNUITY_MEAN_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MEAN'] / df[
-    #         'CREDIT_TO_ANNUITY_RATIO']
-    #     # DAYS DIFFERENCES AND RATIOS
-    #     df['DAYS_DECISION_MEAN_TO_BIRTH'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_BIRTH']
-    #     df['DAYS_CREDIT_MEAN_TO_BIRTH'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_BIRTH']
-    #     df['DAYS_DECISION_MEAN_TO_EMPLOYED'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_EMPLOYED']
-    #     df['DAYS_CREDIT_MEAN_TO_EMPLOYED'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_EMPLOYED']
+    # app_train = app_train.merge(right=new_train.reset_index(), how='left', on='SK_ID_CURR')
+    # app_test = app_test.merge(right=new_test.reset_index(), how='left', on='SK_ID_CURR')
+    # del ori_train, ori_test
+    # gc.collect()
+
+    for df in [app_train, app_test]:
+        df['BUREAU_INCOME_CREDIT_RATIO'] = df['BURO_AMT_CREDIT_SUM_MEAN'] / df['AMT_INCOME_TOTAL']
+        df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
+
+        df['CURRENT_TO_APPROVED_CREDIT_MIN_RATIO'] = df['APPROVED_AMT_CREDIT_MIN'] / df['AMT_CREDIT']
+        df['CURRENT_TO_APPROVED_CREDIT_MAX_RATIO'] = df['APPROVED_AMT_CREDIT_MAX'] / df['AMT_CREDIT']
+        df['CURRENT_TO_APPROVED_CREDIT_MEAN_RATIO'] = df['APPROVED_AMT_CREDIT_MEAN'] / df['AMT_CREDIT']
+
+        df['CURRENT_TO_APPROVED_ANNUITY_MAX_RATIO'] = df['APPROVED_AMT_ANNUITY_MAX'] / df['AMT_ANNUITY']
+        df['CURRENT_TO_APPROVED_ANNUITY_MEAN_RATIO'] = df['APPROVED_AMT_ANNUITY_MEAN'] / df['AMT_ANNUITY']
+        df['PAYMENT_MIN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MIN'] / df['AMT_ANNUITY']
+        df['PAYMENT_MAX_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MAX'] / df['AMT_ANNUITY']
+        df['PAYMENT_MEAN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MEAN'] / df['AMT_ANNUITY']
+        # PREVIOUS TO CURRENT CREDIT TO ANNUITY RATIO
+        df['CTA_CREDIT_TO_ANNUITY_MAX_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MAX'] / df[
+            'CREDIT_TO_ANNUITY_RATIO']
+        df['CTA_CREDIT_TO_ANNUITY_MEAN_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MEAN'] / df[
+            'CREDIT_TO_ANNUITY_RATIO']
+        # DAYS DIFFERENCES AND RATIOS
+        df['DAYS_DECISION_MEAN_TO_BIRTH'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_BIRTH']
+        df['DAYS_CREDIT_MEAN_TO_BIRTH'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_BIRTH']
+        df['DAYS_DECISION_MEAN_TO_EMPLOYED'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_EMPLOYED']
+        df['DAYS_CREDIT_MEAN_TO_EMPLOYED'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_EMPLOYED']
 
     return app_train, app_test
 
@@ -109,6 +120,11 @@ def load_extra_features(app_train, app_test, *tables):
         df['NEW_LIVE_IND_SUM'] = df[live].sum(axis=1)
 
         df["OBS_30_60_diff"] = (df["OBS_30_CNT_SOCIAL_CIRCLE"] - df["OBS_60_CNT_SOCIAL_CIRCLE"])
+
+        df['AGE_RANGE'] = df['DAYS_BIRTH'].apply(lambda x: get_age_label(x))
+        df['AMT_MISSING_FIELDS'] = df.isnull().sum(axis=1).values
+        df['NEW_CREDIT_TO_GOODS_DIFF'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
+
 
     for table in tables:
         app_train = app_train.merge(right=table.reset_index(), how='left', on='SK_ID_CURR')
@@ -234,6 +250,9 @@ def load_prev(prev):
     prev["INTREST_RATE_RATIO"] = prev["RATE_INTEREST_PRIVILEGED"] / prev["RATE_INTEREST_PRIMARY"]
     prev['CREDIT_TO_GOODS_RATIO'] = prev['AMT_CREDIT'] / prev['AMT_GOODS_PRICE']
 
+    total_payment = prev['AMT_ANNUITY'] * prev['CNT_PAYMENT']
+    prev['SIMPLE_INTERESTS'] = (total_payment / prev['AMT_CREDIT'] - 1) / prev['CNT_PAYMENT']
+
     # Previous applications numeric features
     num_aggregations = {
         'AMT_ANNUITY': ['min', 'max', 'mean'],
@@ -281,6 +300,14 @@ def load_install(inst):
     inst['PAYMENT_PERC'] = inst['AMT_PAYMENT'] / inst['AMT_INSTALMENT']
     inst['PAYMENT_DIFF'] = inst['AMT_INSTALMENT'] - inst['AMT_PAYMENT']
 
+    inst['LATE_PAYMENT'] = inst['DBD'].apply(lambda x: 1 if x > 0 else 0)
+    inst['LATE_PAYMENT_RATIO'] = inst.apply(lambda x: x['INSTALMENT_PAYMENT_RATIO'] if x['LATE_PAYMENT'] == 1 else 0,
+                                          axis=1)
+    inst['SIGNIFICANT_LATE_PAYMENT'] = inst['LATE_PAYMENT_RATIO'].apply(lambda x: 1 if x > 0.05 else 0)
+    # Flag k threshold late payments
+    inst['DPD_7'] = inst['DPD'].apply(lambda x: 1 if x >= 7 else 0)
+    inst['DPD_15'] = inst['DPD'].apply(lambda x: 1 if x >= 15 else 0)
+
     aggregations = {
         'NUM_INSTALMENT_VERSION': ['nunique'],
         'DPD': ['max', 'mean', 'sum'],
@@ -289,6 +316,13 @@ def load_install(inst):
         'PAYMENT_DIFF': ['max', 'mean', 'sum', 'var'],
         'AMT_INSTALMENT': ['max', 'mean', 'sum'],
         'AMT_PAYMENT': ['min', 'max', 'mean', 'sum'],
+
+        'SK_ID_PREV': ['size', 'nunique'],
+        'LATE_PAYMENT': ['mean', 'sum'],
+        'SIGNIFICANT_LATE_PAYMENT': ['mean', 'sum'],
+        'LATE_PAYMENT_RATIO': ['mean'],
+        'DPD_7': ['mean'],
+        'DPD_15': ['mean'],
     }
     aggregations.update({col: ["mean"] for col in inst.columns if len(inst[col].unique()) == 2})
     inst_agg = inst.groupby('SK_ID_CURR').agg(aggregations)
@@ -308,17 +342,24 @@ def load_cash(cash):
         'MONTHS_BALANCE': ['max', 'mean', 'size'],
         'SK_DPD': ['max', 'mean'],
         'SK_DPD_DEF': ['max', 'mean'],
-        "CNT_INSTALMENT": ['max', 'mean', 'sum', 'var'],
-        "CNT_INSTALMENT_FUTURE": ['max', 'mean', 'sum', 'var'],
+        "CNT_INSTALMENT": ['max', "first", "last", 'mean', 'sum', 'var'],
+        "CNT_INSTALMENT_FUTURE": ['max', 'mean', 'sum', 'var', "last"],
 
         "INSTALMENT_FUTURE_RATIO": ['max', 'mean', 'sum', 'var'],
         "INSTALMENT_BALANCE_RATIO": ['max', 'mean', 'sum', 'var'],
+        "NAME_CONTRACT_STATUS_Completed": ["mean"]
     }
     aggregations.update({col: ["mean"] for col in cash.columns if len(cash[col].unique()) == 2})
     cash_agg = cash.groupby('SK_ID_CURR').agg(aggregations)
     cash_agg.columns = pd.Index(['POS_' + e[0] + "_" + e[1].upper() for e in cash_agg.columns.tolist()])
     # Count pos cash accounts
     cash_agg['POS_COUNT'] = cash.groupby('SK_ID_CURR').size()
+
+    cash_agg["POS_COMPLETED_BEFORE_MEAN"] = cash_agg['POS_CNT_INSTALMENT_first'] - cash_agg['POS_CNT_INSTALMENT_last']
+    cash_agg['POS_COMPLETED_BEFORE_MEAN'] = cash_agg.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
+                                                              and x['NAME_CONTRACT_STATUS_Completed_mean'] > 0 else 0, axis=1)
+    cash_agg['POS_REMAINING_INSTALMENTS_RATIO'] = cash_agg['CNT_INSTALMENT_FUTURE_last'] / cash_agg['CNT_INSTALMENT_last']
+
     return cash_agg
 
 
@@ -329,12 +370,17 @@ def load_credit(credit):
     credit["RECEIVABLE_DIFF"] = credit["AMT_TOTAL_RECEIVABLE"] - credit["AMT_RECIVABLE"]
     credit["RECEIVABLE_PRINCIPAL_DIFF"] = credit["AMT_TOTAL_RECEIVABLE"] - credit["AMT_RECEIVABLE_PRINCIPAL"]
 
+    credit['LIMIT_USE'] = credit['AMT_BALANCE'] / credit['AMT_CREDIT_LIMIT_ACTUAL']
+    credit['PAYMENT_DIV_MIN'] = credit['AMT_PAYMENT_CURRENT'] / credit['AMT_INST_MIN_REGULARITY']
+    credit['LATE_PAYMENT'] = credit['SK_DPD'].apply(lambda x: 1 if x > 0 else 0)
+    credit['DRAWING_LIMIT_RATIO'] = credit['AMT_DRAWINGS_ATM_CURRENT'] / credit['AMT_CREDIT_LIMIT_ACTUAL']
+
     for col in ["CNT_DRAWINGS_ATM_CURRENT", "CNT_DRAWINGS_OTHER_CURRENT", "CNT_DRAWINGS_POS_CURRENT"]:
         credit["RELATIVE" + col[col.find("_"):]] = credit[col] / credit["CNT_DRAWINGS_CURRENT"]
     aggregations = {
-        'MONTHS_BALANCE': ['max', 'mean', "min", 'size'],
+        'MONTHS_BALANCE': ['max', 'mean', "min"],
         'AMT_BALANCE': ['max', 'mean', 'sum', 'var'],
-        'AMT_CREDIT_LIMIT_ACTUAL': ['max', 'mean', 'sum', 'var'],
+        'AMT_CREDIT_LIMIT_ACTUAL': ['max', 'mean', 'var'],
         "AMT_DRAWINGS_ATM_CURRENT": ['max', 'mean', 'sum', 'var'],
         "AMT_DRAWINGS_CURRENT": ['max', 'mean', 'sum', 'var'],
         "AMT_DRAWINGS_OTHER_CURRENT": ['max', 'mean', 'sum', 'var'],
@@ -344,7 +390,7 @@ def load_credit(credit):
         "AMT_PAYMENT_TOTAL_CURRENT": ['max', 'mean', 'sum', 'var'],
         "AMT_RECEIVABLE_PRINCIPAL": ['max', 'mean', 'sum', 'var'],
         "AMT_RECIVABLE": ['max', 'mean', 'sum', 'var'],
-        "AMT_TOTAL_RECEIVABLE": ['max', 'mean', 'sum', 'var'],
+        "AMT_TOTAL_RECEIVABLE": ['max', 'mean', 'var'],
         "CNT_DRAWINGS_ATM_CURRENT": ['max', 'mean', 'sum', 'var'],
         "CNT_DRAWINGS_CURRENT": ['max', 'mean', 'sum', 'var'],
         "CNT_DRAWINGS_OTHER_CURRENT": ['max', 'mean', 'sum', 'var'],
@@ -353,11 +399,14 @@ def load_credit(credit):
         'SK_DPD': ['max', 'mean'],
         'SK_DPD_DEF': ['max', 'mean'],
 
-        "INSTALMENT_MATURE_BALANCE_RATIO": ['max', 'mean', 'sum', 'var'],
+        "INSTALMENT_MATURE_BALANCE_RATIO": ['max', 'mean', 'var'],
         "POS_AMT_MEAN": ['max', 'mean', 'sum', 'var'],
         "PAYMENT_DIFF": ['max', 'mean', 'sum', 'var'],
         "RECEIVABLE_DIFF": ['max', 'mean', 'sum', 'var'],
         "RECEIVABLE_PRINCIPAL_DIFF": ['max', 'mean', 'sum', 'var'],
+        'LIMIT_USE': ['max', 'mean'],
+        'PAYMENT_DIV_MIN': ['min', 'mean'],
+        'LATE_PAYMENT': ['max', 'sum'],
     }
     aggregations.update({"RELATIVE" + col[col.find("_"):]: ['max', 'mean', 'sum', 'var'] for col in
                          ["CNT_DRAWINGS_ATM_CURRENT", "CNT_DRAWINGS_OTHER_CURRENT", "CNT_DRAWINGS_POS_CURRENT"]})
