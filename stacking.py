@@ -1,4 +1,5 @@
 import pickle
+import json
 
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from catboost import CatBoostClassifier
@@ -271,6 +272,10 @@ if __name__ == '__main__':
 
     # -----------------------------------------KNN---------------------------------------------
     print("start KNN")
+    with open("good_feats.bin", "rb") as f:
+        good_feats = pickle.load(f)
+    app_train = app_train.loc[:, good_feats+['SK_ID_CURR', "TARGET"]]
+    app_test = app_test.loc[:, good_feats+['SK_ID_CURR']]
     for col in app_train.columns:
         if col in ['SK_ID_CURR', "TARGET"]:
             continue

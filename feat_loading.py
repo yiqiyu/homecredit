@@ -27,60 +27,60 @@ def load_dataframe(loc):
 
 def load_extra_feats_post(app_train, app_test):
     tables = []
-    # ori_train = load_dataframe("app_train_new.csv")
-    # ori_test = load_dataframe("app_test_new.csv")
-    # new_train = pd.DataFrame(app_train[["SK_ID_CURR"]])
-    # new_test = pd.DataFrame(app_test[["SK_ID_CURR"]])
-    # docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
-    # live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
+    ori_train = load_dataframe("app_train_new.csv")
+    ori_test = load_dataframe("app_test_new.csv")
+    new_train = pd.DataFrame(app_train[["SK_ID_CURR"]])
+    new_test = pd.DataFrame(app_test[["SK_ID_CURR"]])
+    docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
+    live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
+
+    for df, new in [(ori_train, new_train), (ori_test, new_test)]:
+        new['document_sum'] = df['FLAG_DOCUMENT_2'] + df['FLAG_DOCUMENT_3'] + df['FLAG_DOCUMENT_4'] + df[
+            'FLAG_DOCUMENT_5'] + df['FLAG_DOCUMENT_6'] + df['FLAG_DOCUMENT_7'] + df['FLAG_DOCUMENT_8'] + df[
+                                  'FLAG_DOCUMENT_9'] + df['FLAG_DOCUMENT_10'] + df['FLAG_DOCUMENT_11'] + df[
+                                  'FLAG_DOCUMENT_12'] + df['FLAG_DOCUMENT_13'] + df['FLAG_DOCUMENT_14'] + df[
+                                  'FLAG_DOCUMENT_15'] + df['FLAG_DOCUMENT_16'] + df['FLAG_DOCUMENT_17'] + df[
+                                  'FLAG_DOCUMENT_18'] + df['FLAG_DOCUMENT_19'] + df['FLAG_DOCUMENT_20'] + df[
+                                  'FLAG_DOCUMENT_21']
+        new['credit_minus_goods'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
+        new['reg_div_publish'] = df['DAYS_REGISTRATION'] / df['DAYS_ID_PUBLISH']
+        new['birth_div_reg'] = df['DAYS_BIRTH'] / df['DAYS_REGISTRATION']
+        new['ANN_LENGTH_EMPLOYED_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) / df['DAYS_EMPLOYED']
+        new['age_finish'] = df['DAYS_BIRTH'] * (-1.0 / 365) + (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (
+                    1.0 / 12)  # how old when finish
+        new['ANN_LENGTH_AGE_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (1.0 / 12) / df['DAYS_BIRTH'] * (
+                    -1.0 / 365)
+        new['NEW_DOC_IND_KURT'] = df[docs].kurtosis(axis=1)
+        new['NEW_LIVE_IND_SUM'] = df[live].sum(axis=1)
+
+    app_train = app_train.merge(right=new_train.reset_index(), how='left', on='SK_ID_CURR')
+    app_test = app_test.merge(right=new_test.reset_index(), how='left', on='SK_ID_CURR')
+    del ori_train, ori_test
+    gc.collect()
+
+    # for df in [app_train, app_test]:
+    #     df['BUREAU_INCOME_CREDIT_RATIO'] = df['BURO_AMT_CREDIT_SUM_MEAN'] / df['AMT_INCOME_TOTAL']
+    #     df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
     #
-    # for df, new in [(ori_train, new_train), (ori_test, new_test)]:
-    #     new['document_sum'] = df['FLAG_DOCUMENT_2'] + df['FLAG_DOCUMENT_3'] + df['FLAG_DOCUMENT_4'] + df[
-    #         'FLAG_DOCUMENT_5'] + df['FLAG_DOCUMENT_6'] + df['FLAG_DOCUMENT_7'] + df['FLAG_DOCUMENT_8'] + df[
-    #                               'FLAG_DOCUMENT_9'] + df['FLAG_DOCUMENT_10'] + df['FLAG_DOCUMENT_11'] + df[
-    #                               'FLAG_DOCUMENT_12'] + df['FLAG_DOCUMENT_13'] + df['FLAG_DOCUMENT_14'] + df[
-    #                               'FLAG_DOCUMENT_15'] + df['FLAG_DOCUMENT_16'] + df['FLAG_DOCUMENT_17'] + df[
-    #                               'FLAG_DOCUMENT_18'] + df['FLAG_DOCUMENT_19'] + df['FLAG_DOCUMENT_20'] + df[
-    #                               'FLAG_DOCUMENT_21']
-    #     new['credit_minus_goods'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
-    #     new['reg_div_publish'] = df['DAYS_REGISTRATION'] / df['DAYS_ID_PUBLISH']
-    #     new['birth_div_reg'] = df['DAYS_BIRTH'] / df['DAYS_REGISTRATION']
-    #     new['ANN_LENGTH_EMPLOYED_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) / df['DAYS_EMPLOYED']
-    #     new['age_finish'] = df['DAYS_BIRTH'] * (-1.0 / 365) + (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (
-    #                 1.0 / 12)  # how old when finish
-    #     new['ANN_LENGTH_AGE_RATIO'] = (df['AMT_CREDIT'] / df['AMT_ANNUITY']) * (1.0 / 12) / df['DAYS_BIRTH'] * (
-    #                 -1.0 / 365)
-    #     new['NEW_DOC_IND_KURT'] = df[docs].kurtosis(axis=1)
-    #     new['NEW_LIVE_IND_SUM'] = df[live].sum(axis=1)
+    #     df['CURRENT_TO_APPROVED_CREDIT_MIN_RATIO'] = df['APPROVED_AMT_CREDIT_MIN'] / df['AMT_CREDIT']
+    #     df['CURRENT_TO_APPROVED_CREDIT_MAX_RATIO'] = df['APPROVED_AMT_CREDIT_MAX'] / df['AMT_CREDIT']
+    #     df['CURRENT_TO_APPROVED_CREDIT_MEAN_RATIO'] = df['APPROVED_AMT_CREDIT_MEAN'] / df['AMT_CREDIT']
     #
-    # app_train = app_train.merge(right=new_train.reset_index(), how='left', on='SK_ID_CURR')
-    # app_test = app_test.merge(right=new_test.reset_index(), how='left', on='SK_ID_CURR')
-    # del ori_train, ori_test
-    # gc.collect()
-
-    for df in [app_train, app_test]:
-        df['BUREAU_INCOME_CREDIT_RATIO'] = df['BURO_AMT_CREDIT_SUM_MEAN'] / df['AMT_INCOME_TOTAL']
-        df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
-
-        df['CURRENT_TO_APPROVED_CREDIT_MIN_RATIO'] = df['APPROVED_AMT_CREDIT_MIN'] / df['AMT_CREDIT']
-        df['CURRENT_TO_APPROVED_CREDIT_MAX_RATIO'] = df['APPROVED_AMT_CREDIT_MAX'] / df['AMT_CREDIT']
-        df['CURRENT_TO_APPROVED_CREDIT_MEAN_RATIO'] = df['APPROVED_AMT_CREDIT_MEAN'] / df['AMT_CREDIT']
-
-        df['CURRENT_TO_APPROVED_ANNUITY_MAX_RATIO'] = df['APPROVED_AMT_ANNUITY_MAX'] / df['AMT_ANNUITY']
-        df['CURRENT_TO_APPROVED_ANNUITY_MEAN_RATIO'] = df['APPROVED_AMT_ANNUITY_MEAN'] / df['AMT_ANNUITY']
-        df['PAYMENT_MIN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MIN'] / df['AMT_ANNUITY']
-        df['PAYMENT_MAX_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MAX'] / df['AMT_ANNUITY']
-        df['PAYMENT_MEAN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MEAN'] / df['AMT_ANNUITY']
-        # PREVIOUS TO CURRENT CREDIT TO ANNUITY RATIO
-        df['CTA_CREDIT_TO_ANNUITY_MAX_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MAX'] / df[
-            'CREDIT_TO_ANNUITY_RATIO']
-        df['CTA_CREDIT_TO_ANNUITY_MEAN_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MEAN'] / df[
-            'CREDIT_TO_ANNUITY_RATIO']
-        # DAYS DIFFERENCES AND RATIOS
-        df['DAYS_DECISION_MEAN_TO_BIRTH'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_BIRTH']
-        df['DAYS_CREDIT_MEAN_TO_BIRTH'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_BIRTH']
-        df['DAYS_DECISION_MEAN_TO_EMPLOYED'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_EMPLOYED']
-        df['DAYS_CREDIT_MEAN_TO_EMPLOYED'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_EMPLOYED']
+    #     df['CURRENT_TO_APPROVED_ANNUITY_MAX_RATIO'] = df['APPROVED_AMT_ANNUITY_MAX'] / df['AMT_ANNUITY']
+    #     df['CURRENT_TO_APPROVED_ANNUITY_MEAN_RATIO'] = df['APPROVED_AMT_ANNUITY_MEAN'] / df['AMT_ANNUITY']
+    #     df['PAYMENT_MIN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MIN'] / df['AMT_ANNUITY']
+    #     df['PAYMENT_MAX_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MAX'] / df['AMT_ANNUITY']
+    #     df['PAYMENT_MEAN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MEAN'] / df['AMT_ANNUITY']
+    #     # PREVIOUS TO CURRENT CREDIT TO ANNUITY RATIO
+    #     df['CTA_CREDIT_TO_ANNUITY_MAX_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MAX'] / df[
+    #         'CREDIT_TO_ANNUITY_RATIO']
+    #     df['CTA_CREDIT_TO_ANNUITY_MEAN_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MEAN'] / df[
+    #         'CREDIT_TO_ANNUITY_RATIO']
+    #     # DAYS DIFFERENCES AND RATIOS
+    #     df['DAYS_DECISION_MEAN_TO_BIRTH'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_BIRTH']
+    #     df['DAYS_CREDIT_MEAN_TO_BIRTH'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_BIRTH']
+    #     df['DAYS_DECISION_MEAN_TO_EMPLOYED'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_EMPLOYED']
+    #     df['DAYS_CREDIT_MEAN_TO_EMPLOYED'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_EMPLOYED']
 
     return app_train, app_test
 
