@@ -25,6 +25,15 @@ def load_dataframe(loc):
     return df
 
 
+def group_num_by_cat(df, group_cols, counted, agg_name, operation):
+    gp = getattr(df[group_cols + [counted]].groupby(group_cols)[counted], operation)().reset_index().rename(
+        columns={counted: agg_name})
+    df = df.merge(gp, on=group_cols, how='left')
+    del gp
+    gc.collect()
+    return df
+
+
 def load_extra_feats_post(app_train, app_test):
     tables = []
     ori_train = load_dataframe("app_train_new.csv")
@@ -235,6 +244,26 @@ def load_bureau(bureau, buro_balance):
     bureau_agg = bureau_agg.join(closed_agg, how='left', on='SK_ID_CURR')
     del closed, closed_agg
     gc.collect()
+
+    BUREAU_TIME_AGG = {
+        'AMT_CREDIT_MAX_OVERDUE': ['max', 'mean'],
+        'AMT_CREDIT_SUM_OVERDUE': ['mean'],
+        'AMT_CREDIT_SUM': ['max', 'sum'],
+        'AMT_CREDIT_SUM_DEBT': ['mean', 'sum'],
+        'DEBT_PERCENTAGE': ['mean'],
+        'DEBT_CREDIT_DIFF': ['mean'],
+        'STATUS_0': ['mean'],
+        'STATUS_12345': ['mean'],
+    }
+    for time_frame in [6, 12]:
+        prefix = "BUREAU_LAST{}M_".format(time_frame)
+        time_frame_df = bureau[bureau['DAYS_CREDIT'] >= -30 * time_frame]
+        time_frame_agg = time_frame_df.groupby('SK_ID_CURR').agg(BUREAU_TIME_AGG)
+        time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
+                                   for e in time_frame_agg.columns.tolist()])
+        bureau_agg = bureau_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        del time_frame_df, time_frame_agg
+        gc.collect()
     return bureau_agg
 
 
