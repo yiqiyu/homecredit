@@ -133,11 +133,12 @@ def load_extra_features(app_train, app_test, *tables):
 
 
 def load_bureau(bureau, buro_balance):
-    bb_aggregations = {'MONTHS_BALANCE': ['min', 'max', 'size']}
+    bb_aggregations = {'MONTHS_BALANCE': ['min', 'max', 'mean', 'size']}
     bb_cat = [col for col in buro_balance.columns if len(buro_balance[col].unique()) == 2]
     bb_aggregations.update({col: ["mean"] for col in bb_cat})
     buro_balance_agg = buro_balance.groupby('SK_ID_BUREAU').agg(bb_aggregations)
     buro_balance_agg.columns = pd.Index([e[0] + "_" + e[1].upper() for e in buro_balance_agg.columns.tolist()])
+    buro_balance_agg = buro_balance_agg.merge(buro_balance, how='left', on='SK_ID_BUREAU')
     bureau = bureau.join(buro_balance_agg, how='left', on='SK_ID_BUREAU')
     bureau.drop(['SK_ID_BUREAU'], axis=1, inplace=True)
     del buro_balance_agg
