@@ -20,7 +20,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False
         boosting_type="goss", n_estimators=10000, objective='binary',
         learning_rate=0.02, n_jobs=parallel, random_state=50,
         subsample=0.81, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
-        max_depth=8, colsample_bytree=0.92, num_leaves=35
+        max_depth=8, colsample_bytree=0.86, num_leaves=35
     ) if not lgbm_params else lgbm_params
 
     k_fold = KFold(n_splits=5, shuffle=True, random_state=50)
