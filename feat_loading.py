@@ -165,14 +165,15 @@ def load_bureau(bureau, buro_balance):
     bureau["ANNUITY_DEBT_RATIO"] = bureau["AMT_CREDIT_SUM_DEBT"] / bureau["AMT_ANNUITY"]
     bureau["ANNUITY_OVERDUE_RATIO"] = bureau["AMT_CREDIT_SUM_OVERDUE"] / bureau["AMT_ANNUITY"]
     bureau["MAX_OVERDUE_RATIO"] = bureau["AMT_CREDIT_SUM_OVERDUE"] / bureau["AMT_CREDIT_MAX_OVERDUE"]
+    bureau['CREDIT_TO_ANNUITY_RATIO'] = bureau['AMT_CREDIT_SUM'] / bureau['AMT_ANNUITY']
 
     bureau['ENDDATE_DIF'] = bureau['DAYS_CREDIT_ENDDATE'] - bureau['DAYS_ENDDATE_FACT']
+    bureau['DEBT_PERCENTAGE'] = bureau['AMT_CREDIT_SUM'] / bureau['AMT_CREDIT_SUM_DEBT']
     bureau['DEBT_CREDIT_DIFF'] = bureau['AMT_CREDIT_SUM'] - bureau['AMT_CREDIT_SUM_DEBT']
     num_aggregations = {
         'STATUS_0': ['mean'],
         'STATUS_1': ['mean'],
         'STATUS_12345': ['mean'],
-        'STATUS_C': ['mean'],
         'STATUS_X': ['mean'],
         'DAYS_CREDIT': ['min', 'max', 'mean', 'var'],
         'DAYS_CREDIT_ENDDATE': ['min', 'max', 'mean'],
@@ -201,6 +202,8 @@ def load_bureau(bureau, buro_balance):
         'ENDDATE_DIF': ['mean', 'sum', "max"],
     }
     cat_aggregations = {col: ["mean"] for col in bureau.columns if len(bureau[col].unique()) == 2}
+    cat_aggregations["STATUS_C"] = ["mean"]
+    bureau["STATUS_C"] = bureau["STATUS_C"].astype(bool)
     bureau_agg = bureau.groupby('SK_ID_CURR').agg({**num_aggregations, **cat_aggregations})
     bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
 
@@ -385,10 +388,10 @@ def load_cash(cash):
     # Count pos cash accounts
     cash_agg['POS_COUNT'] = cash.groupby('SK_ID_CURR').size()
 
-    cash_agg["POS_COMPLETED_BEFORE_MEAN"] = cash_agg['POS_CNT_INSTALMENT_first'] - cash_agg['POS_CNT_INSTALMENT_last']
+    cash_agg["POS_COMPLETED_BEFORE_MEAN"] = cash_agg['POS_CNT_INSTALMENT_FIRST'] - cash_agg['POS_CNT_INSTALMENT_LAST']
     cash_agg['POS_COMPLETED_BEFORE_MEAN'] = cash_agg.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
-                                                              and x['NAME_CONTRACT_STATUS_Completed_mean'] > 0 else 0, axis=1)
-    cash_agg['POS_REMAINING_INSTALMENTS_RATIO'] = cash_agg['CNT_INSTALMENT_FUTURE_last'] / cash_agg['CNT_INSTALMENT_last']
+                                                              and x['NAME_CONTRACT_STATUS_Completed_MEAN'] > 0 else 0, axis=1)
+    cash_agg['POS_REMAINING_INSTALMENTS_RATIO'] = cash_agg['CNT_INSTALMENT_FUTURE_LAST'] / cash_agg['CNT_INSTALMENT_LAST']
 
     return cash_agg
 
