@@ -3,8 +3,6 @@ import numpy as np
 import gc
 import importlib
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 def get_age_label(days_birth):
@@ -82,9 +80,9 @@ def load_extra_feats_post(app_train, app_test):
         df['PAYMENT_MEAN_TO_ANNUITY_RATIO'] = df['INSTAL_AMT_PAYMENT_MEAN'] / df['AMT_ANNUITY']
         # PREVIOUS TO CURRENT CREDIT TO ANNUITY RATIO
         df['CTA_CREDIT_TO_ANNUITY_MAX_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MAX'] / df[
-            'CREDIT_TO_ANNUITY_RATIO']
+            'NEW_CREDIT_TO_ANNUITY_RATIO']
         df['CTA_CREDIT_TO_ANNUITY_MEAN_RATIO'] = df['APPROVED_CREDIT_TO_ANNUITY_RATIO_MEAN'] / df[
-            'CREDIT_TO_ANNUITY_RATIO']
+            'NEW_CREDIT_TO_ANNUITY_RATIO']
         # DAYS DIFFERENCES AND RATIOS
         df['DAYS_DECISION_MEAN_TO_BIRTH'] = df['APPROVED_DAYS_DECISION_MEAN'] / df['DAYS_BIRTH']
         df['DAYS_CREDIT_MEAN_TO_BIRTH'] = df['BURO_DAYS_CREDIT_MEAN'] / df['DAYS_BIRTH']
@@ -285,6 +283,7 @@ def load_prev(prev):
 
     total_payment = prev['AMT_ANNUITY'] * prev['CNT_PAYMENT']
     prev['SIMPLE_INTERESTS'] = (total_payment / prev['AMT_CREDIT'] - 1) / prev['CNT_PAYMENT']
+    prev['CREDIT_TO_ANNUITY_RATIO'] = prev['AMT_CREDIT'] / prev['AMT_ANNUITY']
 
     # Previous applications numeric features
     num_aggregations = {
@@ -303,6 +302,7 @@ def load_prev(prev):
         "APP_PAY_DURATION": ['max', 'mean', 'sum'],
         "INTREST_RATE_RATIO": ['max', 'mean', 'sum', 'var'],
         'CREDIT_TO_GOODS_RATIO': ['max', 'mean', 'sum', 'var'],
+        'CREDIT_TO_ANNUITY_RATIO': ['mean', 'max'],
     }
     cat_aggregations = {col: ["mean"] for col in prev.columns if len(prev[col].unique()) == 2}
     prev_agg = prev.groupby('SK_ID_CURR').agg({**num_aggregations, **cat_aggregations})
@@ -334,7 +334,7 @@ def load_install(inst):
     inst['PAYMENT_DIFF'] = inst['AMT_INSTALMENT'] - inst['AMT_PAYMENT']
 
     inst['LATE_PAYMENT'] = inst['DBD'].apply(lambda x: 1 if x > 0 else 0)
-    inst['LATE_PAYMENT_RATIO'] = inst.apply(lambda x: x['INSTALMENT_PAYMENT_RATIO'] if x['LATE_PAYMENT'] == 1 else 0,
+    inst['LATE_PAYMENT_RATIO'] = inst.apply(lambda x: x['PAYMENT_PERC'] if x['LATE_PAYMENT'] == 1 else 0,
                                           axis=1)
     inst['SIGNIFICANT_LATE_PAYMENT'] = inst['LATE_PAYMENT_RATIO'].apply(lambda x: 1 if x > 0.05 else 0)
     # Flag k threshold late payments
@@ -390,8 +390,8 @@ def load_cash(cash):
 
     cash_agg["POS_COMPLETED_BEFORE_MEAN"] = cash_agg['POS_CNT_INSTALMENT_FIRST'] - cash_agg['POS_CNT_INSTALMENT_LAST']
     cash_agg['POS_COMPLETED_BEFORE_MEAN'] = cash_agg.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
-                                                              and x['NAME_CONTRACT_STATUS_Completed_MEAN'] > 0 else 0, axis=1)
-    cash_agg['POS_REMAINING_INSTALMENTS_RATIO'] = cash_agg['CNT_INSTALMENT_FUTURE_LAST'] / cash_agg['CNT_INSTALMENT_LAST']
+                                                              and x['POS_NAME_CONTRACT_STATUS_Completed_MEAN'] > 0 else 0, axis=1)
+    cash_agg['POS_REMAINING_INSTALMENTS_RATIO'] = cash_agg['POS_CNT_INSTALMENT_FUTURE_LAST'] / cash_agg['POS_CNT_INSTALMENT_LAST']
 
     return cash_agg
 
@@ -511,4 +511,15 @@ def del_useless_cols(ds):
 
 
 if __name__ == '__main__':
-    load_all_tables()
+    # load_all_tables()
+    for name, load_method in {
+                                # "cash": load_cash,
+                              # "credit": load_credit,
+                              # "installments": load_install,
+                              "previous": load_prev}.items():
+        print(name)
+        df = load_method(load_dataframe(name + "_new.csv"))
+        # app_train = app_train.merge(right=df.reset_index(), how='left', on='SK_ID_CURR')
+        # app_test = app_test.merge(right=df.reset_index(), how='left', on='SK_ID_CURR')
+        del df
+        gc.collect()
