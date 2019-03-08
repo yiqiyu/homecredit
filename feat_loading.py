@@ -257,7 +257,7 @@ def load_bureau(bureau, buro_balance):
         'STATUS_12345': ['mean'],
     }
     for time_frame in [6, 12]:
-        prefix = "BUREAU_LAST{}M_".format(time_frame)
+        prefix = "BURO_LAST{}M_".format(time_frame)
         time_frame_df = bureau[bureau['DAYS_CREDIT'] >= -30 * time_frame]
         time_frame_agg = time_frame_df.groupby('SK_ID_CURR').agg(BUREAU_TIME_AGG)
         time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
@@ -265,6 +265,18 @@ def load_bureau(bureau, buro_balance):
         bureau_agg = bureau_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
         del time_frame_df, time_frame_agg
         gc.collect()
+
+    sort_bureau = bureau.sort_values(by=['DAYS_CREDIT'])
+    gr = sort_bureau.groupby('SK_ID_CURR')['AMT_CREDIT_MAX_OVERDUE'].last().reset_index()
+    gr.rename({'AMT_CREDIT_MAX_OVERDUE': 'BURO_LAST_LOAN_MAX_OVERDUE'}, inplace=True)
+    bureau_agg = bureau_agg.merge(gr, on='SK_ID_CURR', how='left')
+    del gr, sort_bureau
+    gc.collect()
+    # Ratios: total debt/total credit and active loans debt/ active loans credit
+    bureau_agg['BURO_DEBT_OVER_CREDIT'] = \
+        bureau_agg['BURO_AMT_CREDIT_SUM_DEBT_SUM'] / bureau_agg['BURO_AMT_CREDIT_SUM_SUM']
+    bureau_agg['BURO_ACTIVE_DEBT_OVER_CREDIT'] = \
+        bureau_agg['BURO_ACTIVE_AMT_CREDIT_SUM_DEBT_SUM'] / bureau_agg['BURO_ACTIVE_AMT_CREDIT_SUM_SUM']
     return bureau_agg
 
 
@@ -276,6 +288,7 @@ def load_prev(prev):
     prev['DAYS_TERMINATION'].replace(365243, np.nan, inplace=True)
 
     prev['APP_CREDIT_PERC'] = prev['AMT_APPLICATION'] / prev['AMT_CREDIT']
+    prev['APP_CREDIT_DIFF'] = prev['AMT_APPLICATION'] - prev['AMT_CREDIT']
     prev["APP_DURATION"] = prev["DAYS_TERMINATION"] - prev["DAYS_DECISION"]
     prev["APP_PAY_DURATION"] = prev["DAYS_LAST_DUE"] - prev["DAYS_FIRST_DRAWING"]
     prev["INTREST_RATE_RATIO"] = prev["RATE_INTEREST_PRIVILEGED"] / prev["RATE_INTEREST_PRIMARY"]
@@ -291,6 +304,7 @@ def load_prev(prev):
         'AMT_APPLICATION': ['min', 'max', 'mean'],
         'AMT_CREDIT': ['min', 'max', 'mean'],
         'APP_CREDIT_PERC': ['min', 'max', 'mean', 'var'],
+        'APP_CREDIT_DIFF': ['min', 'max', 'mean', 'var'],
         'AMT_DOWN_PAYMENT': ['min', 'max', 'mean'],
         'AMT_GOODS_PRICE': ['min', 'max', 'mean'],
         'HOUR_APPR_PROCESS_START': ['min', 'max', 'mean'],
@@ -303,6 +317,7 @@ def load_prev(prev):
         "INTREST_RATE_RATIO": ['max', 'mean', 'sum', 'var'],
         'CREDIT_TO_GOODS_RATIO': ['max', 'mean', 'sum', 'var'],
         'CREDIT_TO_ANNUITY_RATIO': ['mean', 'max'],
+        'SIMPLE_INTERESTS': ['max', 'mean']
     }
     cat_aggregations = {col: ["mean"] for col in prev.columns if len(prev[col].unique()) == 2}
     prev_agg = prev.groupby('SK_ID_CURR').agg({**num_aggregations, **cat_aggregations})
@@ -322,6 +337,30 @@ def load_prev(prev):
     prev_agg = prev_agg.join(refused_agg, how='left', on='SK_ID_CURR')
     del refused, refused_agg
     gc.collect()
+
+    time_aggregations = {
+        'AMT_CREDIT': ['sum'],
+        'AMT_ANNUITY': ['mean', 'max'],
+        'SIMPLE_INTERESTS': ['mean', 'max'],
+        'DAYS_DECISION': ['min', 'mean'],
+        'DAYS_LAST_DUE_1ST_VERSION': ['min', 'max', 'mean'],
+        # Engineered features
+        'APP_CREDIT_DIFF': ['min'],
+        'APP_CREDIT_PERC': ['min', 'max', 'mean'],
+        'NAME_CONTRACT_TYPE_Consumer loans': ['mean'],
+        'NAME_CONTRACT_TYPE_Cash loans': ['mean'],
+        'NAME_CONTRACT_TYPE_Revolving loans': ['mean'],
+    }
+
+    for time_frame in [6, 12]:
+        prefix = "PREV_LAST{}M_".format(time_frame)
+        time_frame_df = prev[prev['DAYS_DECISION'] >= -30 * time_frame]
+        time_frame_agg = time_frame_df.groupby('SK_ID_CURR').agg(time_aggregations)
+        time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
+                                   for e in time_frame_agg.columns.tolist()])
+        prev_agg = prev.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        del time_frame_df, time_frame_agg
+        gc.collect()
     return prev_agg
 
 
@@ -365,6 +404,29 @@ def load_install(inst):
     inst_agg['INSTAL_COUNT'] = inst.groupby('SK_ID_CURR').size()
     #     del inst
     #     gc.collect()
+    time_aggregations = {
+        'AMT_CREDIT': ['sum'],
+        'AMT_ANNUITY': ['mean', 'max'],
+        'SIMPLE_INTERESTS': ['mean', 'max'],
+        'DAYS_DECISION': ['min', 'mean'],
+        'DAYS_LAST_DUE_1ST_VERSION': ['min', 'max', 'mean'],
+        # Engineered features
+        'APP_CREDIT_DIFF': ['min'],
+        'APP_CREDIT_PERC': ['min', 'max', 'mean'],
+        'NAME_CONTRACT_TYPE_Consumer loans': ['mean'],
+        'NAME_CONTRACT_TYPE_Cash loans': ['mean'],
+        'NAME_CONTRACT_TYPE_Revolving loans': ['mean'],
+    }
+
+    for time_frame in [6, 12]:
+        prefix = "PREV_LAST{}M_".format(time_frame)
+        time_frame_df = inst[inst['DAYS_INSTALMENT'] >= -30 * time_frame]
+        time_frame_agg = time_frame_df.groupby('SK_ID_CURR').agg(time_aggregations)
+        time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
+                                   for e in time_frame_agg.columns.tolist()])
+        inst_agg = inst.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        del time_frame_df, time_frame_agg
+        gc.collect()
     return inst_agg
 
 
