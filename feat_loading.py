@@ -382,9 +382,10 @@ def load_install(inst):
 
     aggregations = {
         'NUM_INSTALMENT_VERSION': ['nunique'],
+        'DAYS_ENTRY_PAYMENT': ['min', 'max', 'mean'],
         'DPD': ['max', 'mean', 'sum'],
         'DBD': ['max', 'mean', 'sum'],
-        'PAYMENT_PERC': ['max', 'mean', 'sum', 'var'],
+        'PAYMENT_PERC': ['max', 'mean', 'var'],
         'PAYMENT_DIFF': ['max', 'mean', 'sum', 'var'],
         'AMT_INSTALMENT': ['max', 'mean', 'sum'],
         'AMT_PAYMENT': ['min', 'max', 'mean', 'sum'],
@@ -405,27 +406,30 @@ def load_install(inst):
     #     del inst
     #     gc.collect()
     time_aggregations = {
-        'AMT_CREDIT': ['sum'],
-        'AMT_ANNUITY': ['mean', 'max'],
-        'SIMPLE_INTERESTS': ['mean', 'max'],
-        'DAYS_DECISION': ['min', 'mean'],
-        'DAYS_LAST_DUE_1ST_VERSION': ['min', 'max', 'mean'],
-        # Engineered features
-        'APP_CREDIT_DIFF': ['min'],
-        'APP_CREDIT_PERC': ['min', 'max', 'mean'],
-        'NAME_CONTRACT_TYPE_Consumer loans': ['mean'],
-        'NAME_CONTRACT_TYPE_Cash loans': ['mean'],
-        'NAME_CONTRACT_TYPE_Revolving loans': ['mean'],
+        'SK_ID_PREV': ['size'],
+        'DAYS_ENTRY_PAYMENT': ['min', 'max', 'mean'],
+        'AMT_INSTALMENT': ['min', 'max', 'mean', 'sum'],
+        'AMT_PAYMENT': ['min', 'max', 'mean', 'sum'],
+        'DPD': ['max', 'mean', 'var'],
+        'DBD': ['max', 'mean', 'var'],
+        'PAYMENT_DIFFERENCE': ['mean'],
+        'PAYMENT_RATIO': ['mean'],
+        'LATE_PAYMENT': ['mean'],
+        'SIGNIFICANT_LATE_PAYMENT': ['mean'],
+        'LATE_PAYMENT_RATIO': ['mean'],
+        'DPD_7': ['mean'],
+        'DPD_15': ['mean'],
     }
 
-    for time_frame in [6, 12]:
-        prefix = "PREV_LAST{}M_".format(time_frame)
-        time_frame_df = inst[inst['DAYS_INSTALMENT'] >= -30 * time_frame]
-        time_frame_agg = time_frame_df.groupby('SK_ID_CURR').agg(time_aggregations)
+    for time_frame in [36, 60]:
+        recent_prev_id = inst[inst['DAYS_INSTALMENT'] >= -30 * time_frame]['SK_ID_PREV'].unique()
+        inst_recent = inst[inst['SK_ID_PREV'].isin(recent_prev_id)]
+        prefix = 'INS_{}M_'.format(time_frame)
+        time_frame_agg = inst_recent.groupby('SK_ID_CURR').agg(time_aggregations)
         time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
                                    for e in time_frame_agg.columns.tolist()])
         inst_agg = inst.merge(time_frame_agg, how='left', on='SK_ID_CURR')
-        del time_frame_df, time_frame_agg
+        del inst_recent, time_frame_agg
         gc.collect()
     return inst_agg
 
@@ -450,10 +454,20 @@ def load_cash(cash):
     # Count pos cash accounts
     cash_agg['POS_COUNT'] = cash.groupby('SK_ID_CURR').size()
 
-    cash_agg["POS_COMPLETED_BEFORE_MEAN"] = cash_agg['POS_CNT_INSTALMENT_FIRST'] - cash_agg['POS_CNT_INSTALMENT_LAST']
-    cash_agg['POS_COMPLETED_BEFORE_MEAN'] = cash_agg.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
+    sort_pos = cash.sort_values(by=['SK_ID_PREV', 'MONTHS_BALANCE'])
+    gp = sort_pos.groupby('SK_ID_PREV')
+    df = pd.DataFrame()
+    df['SK_ID_CURR'] = gp['SK_ID_CURR'].first()
+    df['MONTHS_BALANCE_MAX'] = gp['MONTHS_BALANCE'].max()
+    df["POS_COMPLETED_BEFORE_MEAN"] = gp['POS_CNT_INSTALMENT_FIRST'] - gp['POS_CNT_INSTALMENT_LAST']
+    df['POS_COMPLETED_BEFORE_MEAN'] = gp.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
                                                               and x['POS_NAME_CONTRACT_STATUS_Completed_MEAN'] > 0 else 0, axis=1)
-    cash_agg['POS_REMAINING_INSTALMENTS_RATIO'] = cash_agg['POS_CNT_INSTALMENT_FUTURE_LAST'] / cash_agg['POS_CNT_INSTALMENT_LAST']
+    df['POS_REMAINING_INSTALMENTS_RATIO'] = gp['POS_CNT_INSTALMENT_FUTURE_LAST'] / gp['POS_CNT_INSTALMENT_LAST']
+    df_gp = df.groupby('SK_ID_CURR').sum().reset_index()
+    df_gp.drop(['MONTHS_BALANCE_MAX'], axis=1, inplace=True)
+    cash_agg = pd.merge(cash_agg, df_gp, on='SK_ID_CURR', how='left')
+    del df, gp, df_gp, sort_pos
+    gc.collect()
 
     return cash_agg
 
@@ -510,6 +524,30 @@ def load_credit(credit):
     cc_agg.columns = pd.Index(['CC_' + e[0] + "_" + e[1].upper() for e in cc_agg.columns.tolist()])
     # Count credit card lines
     cc_agg['CC_COUNT'] = credit.groupby('SK_ID_CURR').size()
+
+    last_ids = credit.groupby('SK_ID_PREV')['MONTHS_BALANCE'].idxmax()
+    last_months_df = credit[credit.index.isin(last_ids)]
+    time_frame_agg = cc_agg.groupby('SK_ID_CURR').agg({'AMT_BALANCE': ['mean', 'max']})
+    time_frame_agg.columns = pd.Index(['{}{}_{}'.format("CC_LAST_", e[0], e[1].upper())
+                                       for e in time_frame_agg.columns.tolist()])
+    cc_agg = cc_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+
+    time_aggregations = {
+        'CNT_DRAWINGS_ATM_CURRENT': ['mean'],
+        'SK_DPD': ['max', 'sum'],
+        'AMT_BALANCE': ['mean', 'max'],
+        'LIMIT_USE': ['max', 'mean']
+    }
+    for time_frame in [12, 24, 48]:
+        recent_prev_id = credit[credit['MONTHS_BALANCE'] >= -30 * time_frame]['SK_ID_PREV'].unique()
+        inst_recent = credit[credit['SK_ID_PREV'].isin(recent_prev_id)]
+        prefix = 'INS_{}M_'.format(time_frame)
+        time_frame_agg = inst_recent.groupby('SK_ID_CURR').agg(time_aggregations)
+        time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
+                                           for e in time_frame_agg.columns.tolist()])
+        cc_agg = credit.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        del inst_recent, time_frame_agg
+        gc.collect()
     return cc_agg
 
 
