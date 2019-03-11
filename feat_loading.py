@@ -358,7 +358,7 @@ def load_prev(prev):
         time_frame_agg = time_frame_df.groupby('SK_ID_CURR').agg(time_aggregations)
         time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
                                    for e in time_frame_agg.columns.tolist()])
-        prev_agg = prev.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        prev_agg = prev_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
         del time_frame_df, time_frame_agg
         gc.collect()
     return prev_agg
@@ -412,8 +412,8 @@ def load_install(inst):
         'AMT_PAYMENT': ['min', 'max', 'mean', 'sum'],
         'DPD': ['max', 'mean', 'var'],
         'DBD': ['max', 'mean', 'var'],
-        'PAYMENT_DIFFERENCE': ['mean'],
-        'PAYMENT_RATIO': ['mean'],
+        'PAYMENT_DIFF': ['mean'],
+        'PAYMENT_PERC': ['mean'],
         'LATE_PAYMENT': ['mean'],
         'SIGNIFICANT_LATE_PAYMENT': ['mean'],
         'LATE_PAYMENT_RATIO': ['mean'],
@@ -428,7 +428,7 @@ def load_install(inst):
         time_frame_agg = inst_recent.groupby('SK_ID_CURR').agg(time_aggregations)
         time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
                                    for e in time_frame_agg.columns.tolist()])
-        inst_agg = inst.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        inst_agg = inst_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
         del inst_recent, time_frame_agg
         gc.collect()
     return inst_agg
@@ -459,10 +459,11 @@ def load_cash(cash):
     df = pd.DataFrame()
     df['SK_ID_CURR'] = gp['SK_ID_CURR'].first()
     df['MONTHS_BALANCE_MAX'] = gp['MONTHS_BALANCE'].max()
-    df["POS_COMPLETED_BEFORE_MEAN"] = gp['POS_CNT_INSTALMENT_FIRST'] - gp['POS_CNT_INSTALMENT_LAST']
-    df['POS_COMPLETED_BEFORE_MEAN'] = gp.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
-                                                              and x['POS_NAME_CONTRACT_STATUS_Completed_MEAN'] > 0 else 0, axis=1)
-    df['POS_REMAINING_INSTALMENTS_RATIO'] = gp['POS_CNT_INSTALMENT_FUTURE_LAST'] / gp['POS_CNT_INSTALMENT_LAST']
+    df['POS_LOAN_COMPLETED_MEAN'] = gp['NAME_CONTRACT_STATUS_Completed'].mean()
+    df["POS_COMPLETED_BEFORE_MEAN"] = gp['CNT_INSTALMENT'].first() - gp['CNT_INSTALMENT'].last()
+    df['POS_COMPLETED_BEFORE_MEAN'] = df.apply(lambda x: 1 if x['POS_COMPLETED_BEFORE_MEAN'] > 0
+                                                              and x['POS_LOAN_COMPLETED_MEAN'] > 0 else 0, axis=1)
+    df['POS_REMAINING_INSTALMENTS_RATIO'] = gp['CNT_INSTALMENT_FUTURE'].last() / gp['CNT_INSTALMENT'].last()
     df_gp = df.groupby('SK_ID_CURR').sum().reset_index()
     df_gp.drop(['MONTHS_BALANCE_MAX'], axis=1, inplace=True)
     cash_agg = pd.merge(cash_agg, df_gp, on='SK_ID_CURR', how='left')
@@ -527,7 +528,7 @@ def load_credit(credit):
 
     last_ids = credit.groupby('SK_ID_PREV')['MONTHS_BALANCE'].idxmax()
     last_months_df = credit[credit.index.isin(last_ids)]
-    time_frame_agg = cc_agg.groupby('SK_ID_CURR').agg({'AMT_BALANCE': ['mean', 'max']})
+    time_frame_agg = last_months_df.groupby('SK_ID_CURR').agg({'AMT_BALANCE': ['mean', 'max']})
     time_frame_agg.columns = pd.Index(['{}{}_{}'.format("CC_LAST_", e[0], e[1].upper())
                                        for e in time_frame_agg.columns.tolist()])
     cc_agg = cc_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
@@ -545,7 +546,7 @@ def load_credit(credit):
         time_frame_agg = inst_recent.groupby('SK_ID_CURR').agg(time_aggregations)
         time_frame_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
                                            for e in time_frame_agg.columns.tolist()])
-        cc_agg = credit.merge(time_frame_agg, how='left', on='SK_ID_CURR')
+        cc_agg = cc_agg.merge(time_frame_agg, how='left', on='SK_ID_CURR')
         del inst_recent, time_frame_agg
         gc.collect()
     return cc_agg
@@ -615,7 +616,7 @@ if __name__ == '__main__':
     for name, load_method in {
                                 # "cash": load_cash,
                               # "credit": load_credit,
-                              # "installments": load_install,
+                              "installments": load_install,
                               "previous": load_prev}.items():
         print(name)
         df = load_method(load_dataframe(name + "_new.csv"))
