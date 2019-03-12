@@ -234,14 +234,14 @@ def load_bureau(bureau, buro_balance):
 
     active = bureau[bureau['CREDIT_ACTIVE_Active'] == 1]
     active_agg = active.groupby('SK_ID_CURR').agg(BUREAU_ACTIVE_AGG)
-    active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
+    active_agg.columns = pd.Index(['BURO_ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
     bureau_agg = bureau_agg.join(active_agg, how='left', on='SK_ID_CURR')
     del active, active_agg
     gc.collect()
     # Bureau: Closed credits - using only numerical aggregations
     closed = bureau[bureau['CREDIT_ACTIVE_Closed'] == 1]
     closed_agg = closed.groupby('SK_ID_CURR').agg(BUREAU_CLOSED_AGG)
-    closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
+    closed_agg.columns = pd.Index(['BURO_CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
     bureau_agg = bureau_agg.join(closed_agg, how='left', on='SK_ID_CURR')
     del closed, closed_agg
     gc.collect()
@@ -613,6 +613,9 @@ def del_useless_cols(ds):
 
 if __name__ == '__main__':
     # load_all_tables()
+    df = load_bureau(load_dataframe("bureau_new.csv"), load_dataframe("bureau_balance_new.csv"))
+    del df
+    gc.collect()
     for name, load_method in {
                                 # "cash": load_cash,
                               # "credit": load_credit,
@@ -620,7 +623,5 @@ if __name__ == '__main__':
                               "previous": load_prev}.items():
         print(name)
         df = load_method(load_dataframe(name + "_new.csv"))
-        # app_train = app_train.merge(right=df.reset_index(), how='left', on='SK_ID_CURR')
-        # app_test = app_test.merge(right=df.reset_index(), how='left', on='SK_ID_CURR')
         del df
         gc.collect()
