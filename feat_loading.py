@@ -67,7 +67,7 @@ def load_extra_feats_post(app_train, app_test):
 
     for df in [app_train, app_test]:
         df['BUREAU_INCOME_CREDIT_RATIO'] = df['BURO_AMT_CREDIT_SUM_MEAN'] / df['AMT_INCOME_TOTAL']
-        df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
+        df['BUREAU_ACTIVE_CREDIT_TO_INCOME_RATIO'] = df['BURO_ACTIVE_AMT_CREDIT_SUM_SUM'] / df['AMT_INCOME_TOTAL']
 
         df['CURRENT_TO_APPROVED_CREDIT_MIN_RATIO'] = df['APPROVED_AMT_CREDIT_MIN'] / df['AMT_CREDIT']
         df['CURRENT_TO_APPROVED_CREDIT_MAX_RATIO'] = df['APPROVED_AMT_CREDIT_MAX'] / df['AMT_CREDIT']
