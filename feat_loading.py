@@ -95,6 +95,7 @@ def load_extra_feats_post(app_train, app_test):
 def load_extra_features(app_train, app_test, *tables):
     docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
     live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
+    group = ['ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'AGE_RANGE', 'CODE_GENDER']
 
     for df in [app_train, app_test]:
         df['NEW_CREDIT_TO_ANNUITY_RATIO'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
@@ -132,6 +133,15 @@ def load_extra_features(app_train, app_test, *tables):
         df['AMT_MISSING_FIELDS'] = df.isnull().sum(axis=1).values
         df['NEW_CREDIT_TO_GOODS_DIFF'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
 
+        df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_MEDIAN', "median")
+        df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_STD', "std")
+        df = group_num_by_cat(df, group, 'AMT_INCOME_TOTAL', 'GROUP_INCOME_MEAN', "mean")
+        df = group_num_by_cat(df, group, 'AMT_INCOME_TOTAL', 'GROUP_INCOME_STD', "std")
+        df = group_num_by_cat(df, group, 'CREDIT_TO_ANNUITY_RATIO', 'GROUP_CREDIT_TO_ANNUITY_MEAN', "mean")
+        df = group_num_by_cat(df, group, 'CREDIT_TO_ANNUITY_RATIO', 'GROUP_CREDIT_TO_ANNUITY_STD', "std")
+        df = group_num_by_cat(df, group, 'AMT_CREDIT', 'GROUP_CREDIT_MEAN', "mean")
+        df = group_num_by_cat(df, group, 'AMT_ANNUITY', 'GROUP_ANNUITY_MEAN', "mean")
+        df = group_num_by_cat(df, group, 'AMT_ANNUITY', 'GROUP_ANNUITY_STD', "std")
 
     for table in tables:
         app_train = app_train.merge(right=table.reset_index(), how='left', on='SK_ID_CURR')
@@ -468,6 +478,18 @@ def load_cash(cash):
     df_gp.drop(['MONTHS_BALANCE_MAX'], axis=1, inplace=True)
     cash_agg = pd.merge(cash_agg, df_gp, on='SK_ID_CURR', how='left')
     del df, gp, df_gp, sort_pos
+    gc.collect()
+
+    # Percentage of late payments for the 3 most recent applications
+    cash = group_num_by_cat(cash, ['SK_ID_PREV'], 'LATE_PAYMENT', 'LATE_PAYMENT_SUM', "sum")
+    # Last month of each application
+    last_month_df = cash.groupby('SK_ID_PREV')['MONTHS_BALANCE'].idxmax()
+    # Most recent applications (last 3)
+    sort_cash = cash.sort_values(by=['SK_ID_PREV', 'MONTHS_BALANCE'])
+    gp = sort_cash.iloc[last_month_df].groupby('SK_ID_CURR').tail(3)
+    gp_mean = gp.groupby('SK_ID_CURR').mean().reset_index()
+    cash_agg = pd.merge(cash_agg, gp_mean[['SK_ID_CURR','LATE_PAYMENT_SUM']], on='SK_ID_CURR', how='left')
+    del last_month_df, sort_cash, gp, gp_mean
     gc.collect()
 
     return cash_agg
