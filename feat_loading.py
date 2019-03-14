@@ -97,6 +97,7 @@ def load_extra_features(app_train, app_test, *tables):
     live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
     group = ['ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'AGE_RANGE', 'CODE_GENDER']
 
+    res = []
     for df in [app_train, app_test]:
         df['NEW_CREDIT_TO_ANNUITY_RATIO'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
         df['NEW_EXT_SOURCES_MEAN'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis=1)
@@ -142,11 +143,12 @@ def load_extra_features(app_train, app_test, *tables):
         df = group_num_by_cat(df, group, 'AMT_CREDIT', 'GROUP_CREDIT_MEAN', "mean")
         df = group_num_by_cat(df, group, 'AMT_ANNUITY', 'GROUP_ANNUITY_MEAN', "mean")
         df = group_num_by_cat(df, group, 'AMT_ANNUITY', 'GROUP_ANNUITY_STD', "std")
+        res.append(df)
 
-    for table in tables:
-        app_train = app_train.merge(right=table.reset_index(), how='left', on='SK_ID_CURR')
-        app_test = app_test.merge(right=table.reset_index(), how='left', on='SK_ID_CURR')
-    return app_train, app_test
+    # for table in tables:
+    #     app_train = app_train.merge(right=table.reset_index(), how='left', on='SK_ID_CURR')
+    #     app_test = app_test.merge(right=table.reset_index(), how='left', on='SK_ID_CURR')
+    return res
 
 
 def load_bureau(bureau, buro_balance):
@@ -584,6 +586,7 @@ def load_all_tables(train="app_train_new.csv", test="app_test_new.csv"):
     app_train = load_dataframe(train)
     app_test = load_dataframe(test)
     app_train, app_test = load_extra_features(app_train, app_test)
+    gc.collect()
     # app_train = app_train.drop(to_del_cols, axis=1)
     # app_test = app_test.drop(to_del_cols, axis=1)
 
@@ -608,6 +611,9 @@ def load_all_tables(train="app_train_new.csv", test="app_test_new.csv"):
     to_del = del_useless_cols(app_train)
     app_test = app_test.drop(to_del, axis=1)
 
+    if "index_x" in app_train.columns and "index_y" in app_train.columns:
+        app_train = app_train.drop(["index_x", "index_y"], axis=1)
+        app_test = app_test.drop(["index_x", "index_y"], axis=1)
     return app_train, app_test
 
 
