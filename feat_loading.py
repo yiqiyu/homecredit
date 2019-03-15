@@ -133,6 +133,8 @@ def load_extra_features(app_train, app_test, *tables):
         df['AGE_RANGE'] = df['DAYS_BIRTH'].apply(lambda x: get_age_label(x))
         df['AMT_MISSING_FIELDS'] = df.isnull().sum(axis=1).values
         df['NEW_CREDIT_TO_GOODS_DIFF'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
+        df["DURATION_REGISTRATION"] = df["DAYS_BIRTH"] - df["DAYS_REGISTRATION"]
+        df["DURATION_WORKING"] = df['DAYS_BIRTH'] - df['DAYS_EMPLOYED']
 
         df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_MEDIAN', "median")
         df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_STD', "std")
@@ -257,6 +259,25 @@ def load_bureau(bureau, buro_balance):
     bureau_agg = bureau_agg.join(closed_agg, how='left', on='SK_ID_CURR')
     del closed, closed_agg
     gc.collect()
+
+    BUREAU_LOAN_TYPE_AGG = {
+        'DAYS_CREDIT': ['mean', 'max'],
+        'AMT_CREDIT_MAX_OVERDUE': ['mean', 'max'],
+        'AMT_CREDIT_SUM': ['mean', 'max'],
+        'AMT_CREDIT_SUM_DEBT': ['mean', 'max'],
+        'DEBT_PERCENTAGE': ['mean'],
+        'DEBT_CREDIT_DIFF': ['mean'],
+        'DAYS_CREDIT_ENDDATE': ['max'],
+    }
+    for credit_type in ['Consumer credit', 'Credit card', 'Mortgage', 'Car loan', 'Microloan']:
+        type_df = bureau[bureau['CREDIT_TYPE_' + credit_type] == 1]
+        prefix = 'BUREAU_' + credit_type.split(' ')[0].upper() + '_'
+        type_df_agg = type_df.groupby('SK_ID_CURR').agg(BUREAU_LOAN_TYPE_AGG)
+        type_df_agg.columns = pd.Index(['{}{}_{}'.format(prefix, e[0], e[1].upper())
+                                           for e in type_df_agg.columns.tolist()])
+        bureau_agg = bureau_agg.merge(type_df_agg, how='left', on='SK_ID_CURR')
+        del type_df, type_df_agg; gc.collect()
+
 
     BUREAU_TIME_AGG = {
         'AMT_CREDIT_MAX_OVERDUE': ['max', 'mean'],
