@@ -32,6 +32,15 @@ def group_num_by_cat(df, group_cols, counted, agg_name, operation):
     return df
 
 
+def tag_same_user(app_train, app_test):
+    df = app_train.append(app_test)
+    df["USER_ID"] = 0
+    gp = df.groupby(["AGE_REGISTRATION", "AGE_WORKING", "AGE_ID_GET", "AGE_LAST_PHONE_CHANG"])
+    for i, v in enumerate(gp.indices.values()):
+        for index in v:
+            df.loc[index, "USER_ID"] = i
+
+
 def load_extra_feats_post(app_train, app_test):
     tables = []
     # ori_train = load_dataframe("app_train_new.csv")
@@ -133,8 +142,11 @@ def load_extra_features(app_train, app_test, *tables):
         df['AGE_RANGE'] = df['DAYS_BIRTH'].apply(lambda x: get_age_label(x))
         df['AMT_MISSING_FIELDS'] = df.isnull().sum(axis=1).values
         df['NEW_CREDIT_TO_GOODS_DIFF'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
-        df["DURATION_REGISTRATION"] = df["DAYS_BIRTH"] - df["DAYS_REGISTRATION"]
-        df["DURATION_WORKING"] = df['DAYS_BIRTH'] - df['DAYS_EMPLOYED']
+
+        df["AGE_REGISTRATION"] = df["DAYS_BIRTH"] - df["DAYS_REGISTRATION"]
+        df["AGE_WORKING"] = df['DAYS_BIRTH'] - df['DAYS_EMPLOYED']
+        df["AGE_ID_GET"] = df['DAYS_BIRTH'] - df['DAYS_ID_PUBLISH']
+        df["AGE_LAST_PHONE_CHANG"] = df['DAYS_BIRTH'] - df['DAYS_LAST_PHONE_CHANGE']
 
         df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_MEDIAN', "median")
         df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_STD', "std")
