@@ -104,7 +104,24 @@ def load_extra_feats_post(app_train, app_test):
 def load_extra_features(app_train, app_test, *tables):
     docs = [_f for _f in app_train.columns if 'FLAG_DOC' in _f]
     live = [_f for _f in app_train.columns if (_f.startswith('FLAG_')) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
-    group = ['ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'AGE_RANGE', 'CODE_GENDER']
+    group = ['ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE', 'AGE_RANGE',
+             'OCCUPATION_TYPE', 'CODE_GENDER'
+             ]
+    if {'ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'CODE_GENDER'} < set(app_train.columns):
+        original = True
+    else:
+        original = False
+        train = load_dataframe("application_train.csv")
+        test = load_dataframe("application_test.csv")
+        app_train = app_train.merge(train[['SK_ID_CURR', 'ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE',
+             'OCCUPATION_TYPE', 'CODE_GENDER'
+             ]], on='SK_ID_CURR', how='left')
+        app_test = app_test.merge(test[['SK_ID_CURR', 'ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE',
+             'OCCUPATION_TYPE', 'CODE_GENDER'
+             ]], on='SK_ID_CURR', how='left')
+        del train, test
+        gc.collect()
+
 
     res = []
     for df in [app_train, app_test]:
@@ -148,15 +165,20 @@ def load_extra_features(app_train, app_test, *tables):
         df["AGE_ID_GET"] = df['DAYS_BIRTH'] - df['DAYS_ID_PUBLISH']
         df["AGE_LAST_PHONE_CHANG"] = df['DAYS_BIRTH'] - df['DAYS_LAST_PHONE_CHANGE']
 
-        df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_MEDIAN', "median")
-        df = group_num_by_cat(df, group, 'EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_STD', "std")
+        df = group_num_by_cat(df, group, 'NEW_EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_MEDIAN', "median")
+        df = group_num_by_cat(df, group, 'NEW_EXT_SOURCES_MEAN', 'GROUP_EXT_SOURCES_STD', "std")
         df = group_num_by_cat(df, group, 'AMT_INCOME_TOTAL', 'GROUP_INCOME_MEAN', "mean")
         df = group_num_by_cat(df, group, 'AMT_INCOME_TOTAL', 'GROUP_INCOME_STD', "std")
-        df = group_num_by_cat(df, group, 'CREDIT_TO_ANNUITY_RATIO', 'GROUP_CREDIT_TO_ANNUITY_MEAN', "mean")
-        df = group_num_by_cat(df, group, 'CREDIT_TO_ANNUITY_RATIO', 'GROUP_CREDIT_TO_ANNUITY_STD', "std")
+        df = group_num_by_cat(df, group, 'NEW_CREDIT_TO_ANNUITY_RATIO', 'GROUP_CREDIT_TO_ANNUITY_MEAN', "mean")
+        df = group_num_by_cat(df, group, 'NEW_CREDIT_TO_ANNUITY_RATIO', 'GROUP_CREDIT_TO_ANNUITY_STD', "std")
         df = group_num_by_cat(df, group, 'AMT_CREDIT', 'GROUP_CREDIT_MEAN', "mean")
         df = group_num_by_cat(df, group, 'AMT_ANNUITY', 'GROUP_ANNUITY_MEAN', "mean")
         df = group_num_by_cat(df, group, 'AMT_ANNUITY', 'GROUP_ANNUITY_STD', "std")
+
+        if not original:
+            df = df.drop(columns=['ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE',
+             'OCCUPATION_TYPE', 'CODE_GENDER'
+             ])
         res.append(df)
 
     # for table in tables:
@@ -482,6 +504,7 @@ def load_install(inst):
 def load_cash(cash):
     cash["INSTALMENT_FUTURE_RATIO"] = cash["CNT_INSTALMENT_FUTURE"] / cash["CNT_INSTALMENT"]
     cash["INSTALMENT_BALANCE_RATIO"] = cash["CNT_INSTALMENT_FUTURE"] / cash["MONTHS_BALANCE"].abs()
+    cash['LATE_PAYMENT'] = cash['SK_DPD'].apply(lambda x: 1 if x > 0 else 0)
     aggregations = {
         'MONTHS_BALANCE': ['max', 'mean', 'size'],
         'SK_DPD': ['max', 'mean'],
@@ -674,14 +697,19 @@ def del_useless_cols(ds):
 
 if __name__ == '__main__':
     # load_all_tables()
-    df = load_bureau(load_dataframe("bureau_new.csv"), load_dataframe("bureau_balance_new.csv"))
-    del df
-    gc.collect()
+    # app_train = load_dataframe("app_train_new.csv")
+    # app_test = load_dataframe("app_test_new.csv")
+    # app_train, app_test = load_extra_features(app_train, app_test)
+    # df = load_bureau(load_dataframe("bureau_new.csv"), load_dataframe("bureau_balance_new.csv"))
+    # del df
+    # del app_train, app_test
+    # gc.collect()
     for name, load_method in {
-                                # "cash": load_cash,
+                                "cash": load_cash,
                               # "credit": load_credit,
-                              "installments": load_install,
-                              "previous": load_prev}.items():
+                              # "installments": load_install,
+                              # "previous": load_prev
+    }.items():
         print(name)
         df = load_method(load_dataframe(name + "_new.csv"))
         del df

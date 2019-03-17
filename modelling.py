@@ -18,9 +18,9 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False
     feature_names = list(X.columns)
     lgbm_params = dict(
         boosting_type="goss", n_estimators=10000, objective='binary',
-        learning_rate=0.02, n_jobs=parallel, random_state=50,
-        subsample=0.81, reg_alpha=0.1, reg_lambda=0.1, min_child_samples=30,
-        max_depth=8, colsample_bytree=0.86, num_leaves=35
+        learning_rate=0.005, n_jobs=parallel, random_state=50,
+        subsample=0.87, reg_alpha=0.4, reg_lambda=0.4, min_child_samples=30,
+        max_depth=9, colsample_bytree=0.66, num_leaves=47
     ) if not lgbm_params else lgbm_params
 
     k_fold = KFold(n_splits=5, shuffle=True, random_state=50)
@@ -30,7 +30,7 @@ def model(train, test, cat_indices="auto", n_folds=5, parallel=3, need_oof=False
 
     valid_scores = []
     train_scores = []
-    best_iteration = 2200
+    best_iteration = 3000
     for train_indices, valid_indices in k_fold.split(X):
         # Training data for the fold
         tnX, tny = X.loc[train_indices, :], y[train_indices]

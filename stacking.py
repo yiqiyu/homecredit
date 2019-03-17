@@ -87,27 +87,27 @@ def get_oof(clf_proto, train, test, target_name, n_folds=5, save_state=False, lo
 
 if __name__ == '__main__':
     print("start loading")
-    app_train = load_dataframe("train_all.csv")
-    app_test = load_dataframe("test_all.csv")
-    app_train, app_test = load_extra_feats_post(app_train, app_test)
-    to_del = del_useless_cols(app_train)
-    app_test = app_test.drop(to_del, axis=1)
+    # app_train = load_dataframe("train_all2.csv")
+    # app_test = load_dataframe("test_all2.csv")
+    # app_train, app_test = load_extra_feats_post(app_train, app_test)
+    # to_del = del_useless_cols(app_train)
+    # app_test = app_test.drop(to_del, axis=1)
     # app_train = app_train.fillna(999999)
     # app_test = app_test.fillna(999999)
     # app_train = app_train.replace([np.inf, -np.inf], [99999, -99999])
     # app_test = app_test.replace([np.inf, -np.inf], [99999, -99999])
 
     # -----------------------------cat load-----------------------------------
-    # app_train, app_test = load_all_tables("application_train.csv", "application_test.csv")
-    # app_train.to_csv("train_all_cat.csv", index=False)
-    # app_test.to_csv("test_all_cat.csv", index=False)
+    app_train, app_test = load_all_tables("application_train.csv", "application_test.csv")
+    app_train.to_csv("train_all_cat.csv", index=False)
+    app_test.to_csv("test_all_cat.csv", index=False)
     # app_train = load_dataframe("train_all_cat.csv")
     # app_test = load_dataframe("test_all_cat.csv")
 
-    # -------------------------------------random forest--------------------------------------------
+    # #-------------------------------------random forest--------------------------------------------
     # print("start training random forest")
     # rf_settings = dict(
-    #     n_estimators=800,
+    #     n_estimators=1200,
     #     max_depth=10,
     #     min_samples_leaf=20,
     #     min_samples_split=10,
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     # # -------------------------------------Extra Tree--------------------------------------------
     # print("start training extra tree")
     # et_settings = dict(
-    #     n_estimators=1200,
+    #     n_estimators=1300,
     #     max_depth=10,
     #     min_samples_leaf=20,
     #     min_samples_split=10,
@@ -147,40 +147,40 @@ if __name__ == '__main__':
     # et_test_feat.to_csv("et_submission.csv", index=False)
 
     # -------------------------------------Catboost--------------------------------------------
-    # print("start catboost")
-    # cat_feats = np.where(app_train.dtypes == np.object)[0]
-    # app_train.loc[cat_feats, :].fillna("NaN", inplace=True)
-    # app_test.loc[cat_feats, :].fillna("NaN", inplace=True)
-    # app_train = app_train.fillna(999999)
-    # app_test = app_test.fillna(999999)
-    # cat_feats = cat_feats-2
-    # cb_params = {
-    #     'iterations':200,
-    #     'learning_rate':0.1,
-    #     'depth':10,
-    #     'l2_leaf_reg':40,
-    #     'bootstrap_type':'Bernoulli',
-    #     'subsample':0.8,
-    #     'scale_pos_weight':5,
-    #     'eval_metric':'AUC',
-    #     'metric_period':50,
-    #     'od_type':'Iter',
-    #     'od_wait':45,
-    #     'allow_writing_files':False,
-    #     # "early_stopping_rounds": 300,
-    #     "verbose": 200,
-    #     "thread_count": 5,
-    #
-    #     }
-    #
-    # cb = CatBoostClassifier(**cb_params)
-    # cb_train_oof, cb_test_feat = get_oof(cb, app_train, app_test, "CB", cat_features=cat_feats)
-    # print("recording")
-    # cb_train_oof.to_csv("CB_oof.csv")
-    # cb_test_feat.to_csv("CB_test.csv")
-    #
-    # cb_test_feat.columns = ["SK_ID_CURR","TARGET"]
-    # cb_test_feat.to_csv("cb_submission.csv", index=False)
+    print("start catboost")
+    cat_feats = np.where(app_train.dtypes == np.object)[0]
+    app_train.loc[cat_feats, :].fillna("NaN", inplace=True)
+    app_test.loc[cat_feats, :].fillna("NaN", inplace=True)
+    app_train = app_train.fillna(999999)
+    app_test = app_test.fillna(999999)
+    cat_feats = cat_feats-2
+    cb_params = {
+        'iterations':330,
+        'learning_rate':0.1,
+        'depth':10,
+        'l2_leaf_reg':40,
+        'bootstrap_type':'Bernoulli',
+        'subsample':0.8,
+        'scale_pos_weight':5,
+        'eval_metric':'AUC',
+        'metric_period':50,
+        'od_type':'Iter',
+        'od_wait':45,
+        'allow_writing_files':False,
+        # "early_stopping_rounds": 300,
+        "verbose": 200,
+        "thread_count": 5,
+
+        }
+
+    cb = CatBoostClassifier(**cb_params)
+    cb_train_oof, cb_test_feat = get_oof(cb, app_train, app_test, "CB", cat_features=cat_feats)
+    print("recording")
+    cb_train_oof.to_csv("CB_oof.csv")
+    cb_test_feat.to_csv("CB_test.csv")
+
+    cb_test_feat.columns = ["SK_ID_CURR","TARGET"]
+    cb_test_feat.to_csv("cb_submission.csv", index=False)
 
     # -------------------------------------xgboost--------------------------------------------
     # print("start xgboost")
@@ -271,47 +271,47 @@ if __name__ == '__main__':
     # mlp_test_feat.to_csv("mlp_submission.csv", index=False)
 
     # -----------------------------------------KNN---------------------------------------------
-    print("start KNN")
-    with open("good_feats.bin", "rb") as f:
-        good_feats = pickle.load(f)
-    app_train = app_train.loc[:, good_feats+['SK_ID_CURR', "TARGET"]]
-    app_test = app_test.loc[:, good_feats+['SK_ID_CURR']]
-    for col in app_train.columns:
-        if col in ['SK_ID_CURR', "TARGET"]:
-            continue
-        if app_train[col].dtype == "bool":
-            app_train[col] = app_train[col].replace([True, False], [1, -1])
-            app_test[col] = app_test[col].replace([True, False], [1, -1])
-        else:
-            app_train[col] = (app_train[col] - app_train[col].mean())/app_train[col].std()
-            app_test[col] = (app_test[col] - app_test[col].mean())/app_test[col].std()
-        gc.collect()
-    print("finished normalization")
-    app_train.fillna(0, inplace=True)
-    app_test.fillna(0, inplace=True)
-    gc.collect()
-    print("finished fillna")
-    for col in app_train.columns:
-        if col in ['SK_ID_CURR', "TARGET"]:
-            continue
-        if (not np.isfinite(app_train[col]).all()) or (not np.isfinite(app_test[col]).all()):
-            app_train[col] = app_train[col].replace([np.inf, -np.inf], 0)
-            app_test[col] = app_test[col].replace([np.inf, -np.inf],
-                                                    0)
-            gc.collect()
-
-
-    knn_params = dict(
-        n_neighbors=10,
-        leaf_size=50,
-        n_jobs=5,
-        metric="euclidean"
-    )
-    knn = KNeighborsClassifier(**knn_params)
-    KNN_train_oof, KNN_test_feat = get_oof(knn, app_train, app_test, "KNN")
-    print("recording")
-    KNN_train_oof.to_csv("knn_oof.csv")
-    KNN_test_feat.to_csv("knn_test.csv")
-
-    KNN_test_feat.columns = ["SK_ID_CURR", "TARGET"]
-    KNN_test_feat.to_csv("knn_submission.csv", index=False)
+    # print("start KNN")
+    # with open("good_feats.bin", "rb") as f:
+    #     good_feats = pickle.load(f)
+    # app_train = app_train.loc[:, good_feats+['SK_ID_CURR', "TARGET"]]
+    # app_test = app_test.loc[:, good_feats+['SK_ID_CURR']]
+    # for col in app_train.columns:
+    #     if col in ['SK_ID_CURR', "TARGET"]:
+    #         continue
+    #     if app_train[col].dtype == "bool":
+    #         app_train[col] = app_train[col].replace([True, False], [1, -1])
+    #         app_test[col] = app_test[col].replace([True, False], [1, -1])
+    #     else:
+    #         app_train[col] = (app_train[col] - app_train[col].mean())/app_train[col].std()
+    #         app_test[col] = (app_test[col] - app_test[col].mean())/app_test[col].std()
+    #     gc.collect()
+    # print("finished normalization")
+    # app_train.fillna(0, inplace=True)
+    # app_test.fillna(0, inplace=True)
+    # gc.collect()
+    # print("finished fillna")
+    # for col in app_train.columns:
+    #     if col in ['SK_ID_CURR', "TARGET"]:
+    #         continue
+    #     if (not np.isfinite(app_train[col]).all()) or (not np.isfinite(app_test[col]).all()):
+    #         app_train[col] = app_train[col].replace([np.inf, -np.inf], 0)
+    #         app_test[col] = app_test[col].replace([np.inf, -np.inf],
+    #                                                 0)
+    #         gc.collect()
+    #
+    #
+    # knn_params = dict(
+    #     n_neighbors=10,
+    #     leaf_size=50,
+    #     n_jobs=5,
+    #     metric="euclidean"
+    # )
+    # knn = KNeighborsClassifier(**knn_params)
+    # KNN_train_oof, KNN_test_feat = get_oof(knn, app_train, app_test, "KNN")
+    # print("recording")
+    # KNN_train_oof.to_csv("knn_oof.csv")
+    # KNN_test_feat.to_csv("knn_test.csv")
+    #
+    # KNN_test_feat.columns = ["SK_ID_CURR", "TARGET"]
+    # KNN_test_feat.to_csv("knn_submission.csv", index=False)
