@@ -1,3 +1,5 @@
+import os
+
 from skopt import BayesSearchCV
 import numpy as np
 import pandas as pd
@@ -6,6 +8,7 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 
 from feat_loading import *
+
 
 class BayesSearchCV(BayesSearchCV):
     def _run_search(self, x): raise BaseException('Use newer skopt')
@@ -25,8 +28,8 @@ if __name__ == '__main__':
     cat_feats = cat_feats - 2
 
     cb_params = {
-        'iterations': (300, 500),
-        'learning_rate': (1e-2, 0.5, 'log-uniform'),
+        # 'iterations': (300, 500),
+        # 'learning_rate': (1e-2, 0.5, 'log-uniform'),
         'depth': (5, 15),
         'l2_leaf_reg': (1e-2, 1e+3, 'log-uniform'),
         'bootstrap_type': ['Bernoulli'],
@@ -43,7 +46,7 @@ if __name__ == '__main__':
         "random_strength": (1, 100)
 
     }
-    cb = CatBoostClassifier()
+    cb = CatBoostClassifier(iterations=300, learning_rate=0.5, boosting_type="Plain", rsm=0.1)
     opt = BayesSearchCV(
         cb,
         cb_params,
@@ -59,6 +62,13 @@ if __name__ == '__main__':
     print("val. score: %s" % opt.best_score_)
     print("test score: %s" % opt.score(X_test, y_test))
     print(opt.cv_results_ )
+
+    with open("wwwww.txt", "w+") as f:
+        f.write(opt.best_score_)
+        f.write("\n")
+        f.write(opt.score(X_test, y_test))
+        f.write("\n")
+        f.write(opt.cv_results_ )
 
 
     # # print("start xgboost")
@@ -89,3 +99,5 @@ if __name__ == '__main__':
     # print("val. score: %s" % opt.best_score_)
     # print("test score: %s" % opt.score(X_test, y_test))
     # print(opt.cv_results_)
+
+    # os.system("shutdown -s -t  60 ")
