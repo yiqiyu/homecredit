@@ -2,18 +2,22 @@ from mmlspark import LightGBMRegressor
 from mmlspark import LightGBMRegressionModel
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
+import os
 
+os.getcwd()
+
+conf = SparkConf().setMaster("spark://master:7077").setAppName("MMLSPARK")
+sc = SparkContext(conf = conf)
+
+# spark-submit --py-files /mnt/d/data_analysis/homecredit2/feat_loading.py
 from feat_loading import *
 
-app_train = load_dataframe("train_all2.csv")
-app_test = load_dataframe("test_all2.csv")
+app_train = load_dataframe("/mnt/d/data_analysis/homecredit2/train_all2.csv")
+app_test = load_dataframe("/mnt/d/data_analysis/homecredit2/test_all2.csv")
 app_train, app_test = load_extra_feats_post(app_train, app_test)
 to_del = del_useless_cols(app_train)
 app_test = app_test.drop(to_del, axis=1)
 
-
-conf = SparkConf().setMaster("spark://master:7077").setAppName("MMLSPARK")
-sc = SparkContext(conf = conf)
 
 spark = SparkSession \
         .builder \
