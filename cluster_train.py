@@ -37,7 +37,7 @@ app_test = spark.read.csv("/homeredit/test_all2.csv", header='true', inferSchema
 
 
 featuresCreator = ft.VectorAssembler(
-    inputCols=app_train.columns,
+    inputCols=app_train.columns[1:],
     outputCol='features'
     )
 
