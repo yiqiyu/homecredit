@@ -32,12 +32,12 @@ spark = SparkSession \
 # app_test_spark = spark.createDataFrame(app_test).collect()
 
 
-app_train = spark.read.csv("/homeredit/train_all2.csv", header='true', inferSchema='true')
-app_test = spark.read.csv("/homeredit/test_all2.csv", header='true', inferSchema='true')
+app_train = spark.read.csv("/homeredit/train_all3.csv", header='true', inferSchema='true')
+app_test = spark.read.csv("/homeredit/test_all3.csv", header='true', inferSchema='true')
 
 
 featuresCreator = ft.VectorAssembler(
-    inputCols=app_train.columns[1:],
+    inputCols=[col for col in app_train.columns[1:] if col != "TARGET"],
     outputCol='features'
     )
 
